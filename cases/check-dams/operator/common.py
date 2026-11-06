@@ -10,21 +10,22 @@ def finite(value):
     return value
 
 def region(params):
-    bbox=params['region_bbox']
-    if not isinstance(bbox,list) or len(bbox)!=4:raise ValueError('region_bbox must have four numbers')
-    w,s,e,n=map(finite,bbox)
-    if not (-180<=w<e<=180 and -90<=s<n<=90):raise ValueError('invalid WGS84 selection box; antimeridian crossing is not supported')
-    return box(w,s,e,n)
+    from polygon_region import selection
+    geometry=selection(params['region'])
+    if list(geometry.bounds)!=params['region_bbox']:raise ValueError('region_bbox must match polygon bounds')
+    return geometry
 
 def project_region(params,crs):
-    # Densify each side before projection; selection predicates still use WGS84
-    # coordinates for points, avoiding bounding-envelope false positives.
-    w,s,e,n=region(params).bounds
-    points=[]
-    for a,b in [((w,s),(e,s)),((e,s),(e,n)),((e,n),(w,n)),((w,n),(w,s))]:
-        points.extend([(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t) for t in np.linspace(0,1,33)])
+    # Densify the actual rings, preserving concavities and holes under projection.
     from shapely.geometry import Polygon
-    return transform_geometry(Transformer.from_crs('EPSG:4326',crs,always_xy=True).transform,Polygon(points))
+    geometry=region(params)
+    def densify(ring):
+        points=[];coordinates=list(ring.coords)
+        for a,b in zip(coordinates,coordinates[1:]):
+            points.extend((a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t) for t in np.linspace(0,1,33))
+        return points
+    polygon=Polygon(densify(geometry.exterior),[densify(r) for r in geometry.interiors])
+    return transform_geometry(Transformer.from_crs('EPSG:4326',crs,always_xy=True).transform,polygon)
 
 def metric_crs(value):
     crs=CRS.from_user_input(value)
@@ -33,14 +34,17 @@ def metric_crs(value):
     return crs
 
 def render(result):
-    crs=result['crs'];bounds=project_region({'region_bbox':result['region_bbox']},crs).bounds
+    crs=result['crs'];bounds=project_region(result,crs).bounds
     west,south,east,north=bounds;width=1000;height=760
     scale=min(820/max(east-west,1),490/max(north-south,1))
     def xy(x,y):return 90+(x-west)*scale,130+(north-y)*scale
     elements=[]
-    selection=project_region({'region_bbox':result['region_bbox']},crs)
-    polygon=' '.join(f'{x:.2f},{y:.2f}' for x,y in [xy(*c) for c in selection.exterior.coords])
-    elements.append(f'<polygon points="{polygon}" fill="#eef5ef" stroke="#3b6580" stroke-width="2"/>')
+    selection=project_region(result,crs)
+    def ring_path(ring):
+        coords=[xy(*c) for c in ring.coords]
+        return 'M'+'L'.join(f'{x:.2f},{y:.2f}' for x,y in coords)+'Z'
+    path=ring_path(selection.exterior)+''.join(ring_path(r) for r in selection.interiors)
+    elements.append(f'<path d="{path}" fill="#eef5ef" fill-rule="evenodd" stroke="#3b6580" stroke-width="2"/>')
     for f in result['susceptible_channels']:
         geometry=shape(f['geometry'])
         for line in (geometry.geoms if hasattr(geometry,'geoms') else [geometry]):

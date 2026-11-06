@@ -8,16 +8,16 @@ This case identifies **existing synthetic check-dam structures** within suscepti
 
 | Center | Data | Approximate volume |
 |---|---|---:|
-| A | DEM, catchments, complete channel geometry/topology | 265 MiB |
-| B | RGB imagery and georeferencing control information | 530 MiB |
-| C | HydroID channel rasters | 177 MiB |
+| 西北科学数据中心 | DEM, catchments, complete channel geometry/topology | 265 MiB |
+| 华北科学数据中心 | RGB imagery and georeferencing control information | 530 MiB |
+| 西南科学数据中心 | HydroID channel rasters | 177 MiB |
 
 ```mermaid
 flowchart LR
-    A[Center A: terrain] --> S[Slope and entropy]
+    A[Northwest Science Data Center: terrain] --> S[Slope and entropy]
     S --> H[Susceptible channels]
-    B[Center B: imagery] --> Y[YOLO segmentation]
-    C[Center C: HydroID raster] --> O[Spatial overlay]
+    B[North China Science Data Center: imagery] --> Y[YOLO segmentation]
+    C[Southwest Science Data Center: HydroID raster] --> O[Spatial overlay]
     H --> O
     Y --> O
     O --> M[Distribution map and GeoJSON]
@@ -72,6 +72,26 @@ The Web interface displays a sky plot, color–color plot, hover inspection and 
 
 ## Interactive visualization
 
-The check-dam Web map displays offline, WGS84-reprojected previews derived from the actual synthetic RGB and DEM inputs. Switch imagery/terrain, zoom with the wheel or buttons, drag to pan, toggle channels/candidates, click a candidate or table row for details, and export the current map as PNG. The region selector also displays the imagery preview. Previews are display assets under `.state/cases/check-dams/visuals/`, generated once at application startup and invalidated when input file size/timestamp changes. They do not change analysis, execution or placement. No external tile server is needed. Synthetic plateaus and motifs do not represent real terrain or satellite imagery; the downloadable SVG remains a schematic analysis artifact.
+The check-dam Web map displays offline georeferenced previews (WGS84 for selection, Web Mercator for result maps) derived from the actual synthetic RGB and DEM inputs. Switch imagery/terrain, zoom with the wheel or buttons, drag to pan, toggle channels/candidates, click a candidate or table row for details, and export the current map as PNG. The region selector also displays the imagery preview. Previews are display assets under `.state/cases/check-dams/visuals/`, generated once at application startup and invalidated when input file size/timestamp changes. They do not change analysis, execution or placement. No external tile server is needed. Synthetic plateaus and motifs do not represent real terrain or satellite imagery; the downloadable SVG remains a schematic analysis artifact.
 
 Astronomy plots use the actual matched sources on a dark coordinate grid. Star size reflects the synthetic g magnitude, and selecting a source in either chart or the table highlights it in both charts and displays photometry and matching details. The selection map displays matched-source positions after completion. No fabricated survey background is added.
+
+### Public geographic basemap
+
+The check-dam result map additionally offers an OpenStreetMap layer covering the selected Loess Plateau study region. This is a **real geographic background**; channel geometry, dam candidates and scientific results remain synthetic. The layer reads only visible standard raster tiles from `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, maintains a bounded in-memory cache and does not prefetch or package tiles for offline use. Attribution links to [OpenStreetMap copyright](https://www.openstreetmap.org/copyright) and is included in PNG exports. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/). Public tiles require browser Internet access; the locally generated synthetic imagery/terrain layers remain usable without it. The public layer uses a Mercator projection for map coordinates, panning and anchored zoom.
+
+The region selector uses a real OpenStreetMap basemap, with synthetic channels and the selection rectangle overlaid inside the available data footprint. Tiles are fetched on demand through the case service and cached locally for seven days; no region is pre-downloaded. Attribution remains visible. An explicit message is shown if the external map service cannot be reached.
+
+The selector initially selects and displays an illustrative Yellow River regional rectangle (95–120°E, 32–42°N), not an authoritative basin boundary. Drag in pan mode, use the wheel or +/− to zoom, double-click to zoom in, or switch to box selection. The data-coverage button selects and fits the available data footprint. Analysis uses only the intersection with the existing synthetic dataset; selecting a larger region does not add data.
+
+### Precise polygon selection
+
+Use **Polygon**, click at least three vertices, and choose **Finish drawing**. **Edit vertices** lets you drag existing vertices; **Undo vertex** removes the latest draft point, and Escape cancels a draft. The coordinate fields show the bounding rectangle; editing them replaces the selection with a rectangle. Rectangles are submitted as Polygons too.
+
+The HTTP request accepts `region`, a WGS84 GeoJSON Polygon geometry, and `min_confidence`. It validates closed rings, finite coordinate pairs, positive area, self-intersections and intersection with the data footprint. Up to 256 coordinates across at most 16 rings are accepted. Holes are supported by the API; the drawing tool creates one exterior ring. Antimeridian-crossing selections are unsupported. Invalid polygons are rejected rather than silently replaced by their bounding rectangle.
+
+```json
+{"region":{"type":"Polygon","coordinates":[[[109.12,36.06],[109.19,36.06],[109.12,36.12],[109.12,36.06]]]},"min_confidence":0.35}
+```
+
+The fixed Job receives `REGION` and a derived `REGION_BBOX`. The envelope narrows imagery tile/window candidates; precise polygon intersection narrows windows further and point-in-polygon tests filter detections. Overlay independently rechecks each point. Exterior and hole boundaries are retained, while hole interiors are excluded. Complete terrain basins and channel topology remain available for entropy and downstream tracing. Only rendered channel geometry is clipped; selection must not truncate scientific context. Results and downloaded metadata retain the original polygon, and both map views draw its actual rings. The local operators use version `1.1`.

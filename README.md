@@ -16,9 +16,9 @@ flowchart LR
     Visitor --> Astro[Observatory interface]
     Dam --> U[DACP Union]
     Astro --> U
-    U <--> A[Center A: terrain + g catalog]
-    U <--> B[Center B: imagery + r catalog]
-    U <--> C[Center C: channel grids + i catalog]
+    U <--> A[Northwest Science Data Center: terrain + g catalog]
+    U <--> B[North China Science Data Center: imagery + r catalog]
+    U <--> C[Southwest Science Data Center: channel grids + i catalog]
     U --> Screen[Live operations screen]
 ```
 

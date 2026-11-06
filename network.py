@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Create and manage CONET's shared three-center DACP/Union network."""
+"""Create and manage CONET's configured multi-center DACP/Union network."""
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -55,7 +56,8 @@ def datasets_for(center):
     result={}
     for entry in node['datasets']:
         case=next(c for c in CONFIG['cases'] if c['id']==entry['case'])
-        directory=case_state(case)/'data'/center
+        directory=case_state(case)/'data'/entry.get('directory',center)
+        if not directory.resolve().is_relative_to((case_state(case)/'data').resolve()):raise ValueError('Dataset directory must remain inside case data')
         if not directory.is_dir():raise ValueError(f'Missing data: {directory}; see generation instructions')
         result[entry['name']]={'provider':'directory','description':json.dumps({'title':entry['title'],'description':entry['description'],'case':case['id'],'center':center,'synthetic':True}),'source':{'root':str(directory)}}
     return result
@@ -100,12 +102,15 @@ def up():
     if not (tls/'ca.pem').exists():
         openssl('req','-x509','-newkey','rsa:2048','-nodes','-days','365','-keyout',tls/'ca.key','-out',tls/'ca.pem','-subj','/CN=DACP synthetic case CA')
     (tls/'extensions.cnf').write_text('subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth,clientAuth\n')
-    for name in ['a','b','c','union']:
+    center_ids=[c['id'] for c in CONFIG['centers']]
+    if not center_ids or len(set(center_ids))!=len(center_ids) or any(not re.fullmatch(r'[a-z][a-z0-9-]*',c) or c=='union' for c in center_ids):
+        raise ValueError('Centers require unique lowercase identifiers; union is reserved')
+    for name in [*center_ids,'union']:
         if not (tls/(name+'.pem')).exists():
             openssl('req','-newkey','rsa:2048','-nodes','-keyout',tls/(name+'.key'),'-out',tls/(name+'.csr'),'-subj','/CN=synthetic-'+name)
             openssl('x509','-req','-in',tls/(name+'.csr'),'-CA',tls/'ca.pem','-CAkey',tls/'ca.key','-CAcreateserial','-days','365','-extfile',tls/'extensions.cnf','-out',tls/(name+'.pem'))
     for key in tls.glob('*.key'):key.chmod(0o600)
-    ports={name:free_port() for name in ['a','b','c','union']};web={name:free_port() for name in ports}
+    ports={name:free_port() for name in [*center_ids,'union']};web={name:free_port() for name in ports}
     identity_config=dict(host='127.0.0.1',port=ports['union'],public_url=f"dacp://127.0.0.1:{ports['union']}",
         tls_cert=str(tls/'union.pem'),tls_key=str(tls/'union.key'),tls_ca=str(tls/'ca.pem'),state_directory=str(STATE/'union'),
         credential_directory=str(STATE/'union-credentials'),poll_interval_ms=500,execution_timeout_seconds=300,retention_seconds=3600,
@@ -130,8 +135,8 @@ def up():
         secret(STATE/'app.token',account['token'])
     processes={}
     try:
-        for center in ['a','b','c']:start(NODE,STATE/(center+'.yaml'),processes,center)
-        for center in ['a','b','c']:
+        for center in center_ids:start(NODE,STATE/(center+'.yaml'),processes,center)
+        for center in center_ids:
             for _ in range(200):
                 try:
                     with socket.create_connection(('127.0.0.1',ports[center]),timeout=.2):break

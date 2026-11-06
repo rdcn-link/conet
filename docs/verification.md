@@ -42,4 +42,10 @@ Execution runtimes `conet-geospatial@1.0` and `conet-astronomy@1.0` were registe
 
 ## Reference website
 
-The requested reference `https://conet.4fair.cn/` was retried using HTTPS/HTTP, the configured proxy, direct connections and Chromium. Proxy requests failed with TLS/502 errors and direct requests timed out. The reference page could not be inspected. CONET's screen is an original implementation based on live Union observations, not a verified reproduction of that site.
+The requested reference `https://conet.4fair.cn/` was retried using HTTPS/HTTP, the configured proxy, direct connections and Chromium. Proxy requests failed with TLS/502 errors and direct requests timed out. The reference page could not be inspected. The screen follows the user-provided reference screenshot's globe-and-side-panel composition, with live Union observations and clearly marked illustrative node locations.
+
+## Polygon selection verification
+
+Run `python scripts/smoke_polygon.py --url http://127.0.0.1:8870` with the deployment Python environment. It rejects a self-intersecting request, executes a rectangle and a triangle over the first tile through the shared Union, and verifies every returned point against its Polygon. The rectangle yielded **3** valid sites and the triangle **2**. Nineteen contract tests passed, including envelope false positives, boundary inclusion, hole preservation under projection and the overlay membership guard. Browser checks covered polygon drawing, completion and vertex editing.
+
+The five check-dam operators at version `1.1` were submitted as source-only packages and remain pending administrator approval. Their submission IDs are `1b44925a-24a0-4802-a235-e25fd36033b2` (detect), `bd86c3d9-53b5-489b-bcb1-40dcd0338132` (map), `68c0ba4b-574c-4d8e-8830-7cb781097e8d` (overlap), `835040fb-8da6-4ff3-bc8b-10b427906294` (susceptibility), and `71cea7dc-c7fc-4805-9c34-d0f076de97da` (terrain). Local execution uses the installed packages; public-download execution is not claimed.

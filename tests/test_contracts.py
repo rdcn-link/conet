@@ -106,4 +106,40 @@ class MapPreviewContracts(unittest.TestCase):
             with Image.open(preview) as image:self.assertEqual(image.getpixel((1024,1024)),(63,127,191))
             before=preview.stat().st_mtime_ns;visuals.prepare(state);self.assertEqual(preview.stat().st_mtime_ns,before)
 
+class PolygonSelectionContracts(unittest.TestCase):
+    def setUp(self):
+        from polygon_region import selection,rectangle
+        self.selection=selection;self.rectangle=rectangle
+        self.triangle={'type':'Polygon','coordinates':[[[109,35],[110,35],[109,36],[109,35]]]}
+    def test_triangle_excludes_envelope_false_positive_and_keeps_boundary(self):
+        from shapely.geometry import Point
+        geometry=self.selection(self.triangle)
+        self.assertTrue(geometry.envelope.covers(Point(109.9,35.9)))
+        self.assertFalse(geometry.covers(Point(109.9,35.9)))
+        self.assertTrue(geometry.covers(Point(109.2,35.2)))
+        self.assertTrue(geometry.covers(Point(109,35)))
+    def test_invalid_polygons_rejected(self):
+        for value in [None,{'type':'MultiPolygon','coordinates':[]},
+            {'type':'Polygon','coordinates':[[[0,0],[1,1],[1,0],[0,1],[0,0]]]},
+            {'type':'Polygon','coordinates':[[[0,0],[1,0],[0,1]]]},
+            {'type':'Polygon','coordinates':[[[0,0],[1,0],[float('nan'),1],[0,0]]]}]:
+            with self.subTest(value=value),self.assertRaises(ValueError):self.selection(value)
+    def test_projection_preserves_hole(self):
+        from common import project_region
+        polygon=self.rectangle([109,35,110,36]);polygon['coordinates'].append([[109.2,35.2],[109.8,35.2],[109.8,35.8],[109.2,35.8],[109.2,35.2]])
+        projected=project_region({'region':polygon,'region_bbox':[109,35,110,36]},'EPSG:32649')
+        self.assertEqual(len(projected.interiors),1)
+        from pyproj import Transformer
+        from shapely.geometry import Point
+        self.assertFalse(projected.covers(Point(*Transformer.from_crs(4326,32649,always_xy=True).transform(109.5,35.5))))
+    def test_overlap_rechecks_polygon_before_channel_matching(self):
+        params={'region':self.triangle,'region_bbox':[109,35,110,36]}
+        hazards={**params,'HydroIDs':[],'features':[],'channel_rejections':[],'crs':'EPSG:32649'}
+        detected={**params,'points':[{'tile':'t00','point_id':'outside','longitude':109.9,'latitude':35.9}],'rejections':[],'model':'test','windows_inferred':0}
+        import tarfile
+        archive=io.BytesIO()
+        with tarfile.open(fileobj=archive,mode='w'):pass
+        result=dam.overlap(hazards,detected,[archive.getvalue()],params)
+        self.assertFalse(result['features']);self.assertEqual(result['rejections'],[{'point_id':'outside','reason':'outside_region'}])
+
 if __name__=='__main__':unittest.main()

@@ -77,7 +77,7 @@ def terrain(chunks,params):
                     features.append(dict(f,properties=props))
                 tiles+=1
             dem_data=None
-    return {'synthetic':True,'crs':'EPSG:32649','features':features,'tiles_processed':tiles,'region_bbox':params['region_bbox'],
+    return {'synthetic':True,'crs':'EPSG:32649','features':features,'tiles_processed':tiles,'region_bbox':params['region_bbox'],'region':params['region'],
             'entropy_definition':'H = -sum(p_i ln(p_i))/ln(16), equally spaced elevation bins over each complete synthetic tile basin'}
 
 
@@ -98,7 +98,7 @@ def susceptibility(metrics,params):
     for identifier,p in selected.items():
         f=by_id[identifier];geom=shape(f['geometry']).intersection(selection)
         if not geom.is_empty:visible.append(dict(f,geometry=mapping(geom),properties=dict(f['properties'],**p)))
-    return {'synthetic':True,'crs':metrics['crs'],'region_bbox':params['region_bbox'],'HydroIDs':sorted(selected),
+    return {'synthetic':True,'crs':metrics['crs'],'region_bbox':params['region_bbox'],'region':params['region'],'HydroIDs':sorted(selected),
             'features':visible,'channel_rejections':rejected,'metrics':metrics['features'],'tiles_processed':metrics['tiles_processed']}
 
 
@@ -167,15 +167,18 @@ def detect(chunks,params):
         if any(math.hypot(p['x']-q['x'],p['y']-q['y'])<params.get('duplicate_distance_m',60) for q in unique):
             duplicates.append({'point_id':p['point_id'],'reason':'duplicate_detection'});continue
         unique.append(p)
-    return {'synthetic':True,'crs':'EPSG:32649','region_bbox':params['region_bbox'],'points':unique,'rejections':duplicates,
+    return {'synthetic':True,'crs':'EPSG:32649','region_bbox':params['region_bbox'],'region':params['region'],'points':unique,'rejections':duplicates,
             'windows_inferred':windows,'tiles_inferred':tiles,'model':'YOLO11n-seg trained only on synthetic motifs'}
 
 
 def overlap(hazards,detected,chunks,params):
-    if hazards['region_bbox']!=detected['region_bbox'] or hazards['region_bbox']!=params['region_bbox']:raise ValueError('selection mismatch')
-    selected=set(hazards['HydroIDs']);accepted=[];rejected=list(detected['rejections']);processed=set();metadata=None
+    if hazards['region']!=detected['region'] or hazards['region']!=params['region']:raise ValueError('selection mismatch')
+    selection=region(params);selected=set(hazards['HydroIDs']);accepted=[];rejected=list(detected['rejections']);processed=set();metadata=None
     by_tile={}
-    for p in detected['points']:by_tile.setdefault(p['tile'],[]).append(p)
+    for p in detected['points']:
+        if not selection.covers(Point(p['longitude'],p['latitude'])):
+            rejected.append({'point_id':p['point_id'],'reason':'outside_region'});processed.add(p['point_id']);continue
+        by_tile.setdefault(p['tile'],[]).append(p)
     bias=params.get('bias',3)
     if not isinstance(bias,int) or not 0<=bias<=16:raise ValueError('invalid pixel window bias')
     for name,data in bundle(chunks):
@@ -198,7 +201,7 @@ def overlap(hazards,detected,chunks,params):
     for p in detected['points']:
         if p['point_id'] not in processed:rejected.append({'point_id':p['point_id'],'reason':'missing_channel_tile'})
     geojson={'type':'FeatureCollection','features':[dict(f,geometry={'type':'Point','coordinates':[f['properties']['longitude'],f['properties']['latitude']]}) for f in accepted]}
-    return {'synthetic':True,'crs':hazards['crs'],'region_bbox':params['region_bbox'],'features':accepted,'geojson':geojson,
+    return {'synthetic':True,'crs':hazards['crs'],'region_bbox':params['region_bbox'],'region':params['region'],'features':accepted,'geojson':geojson,
        'susceptible_channels':hazards['features'],'candidate_count':len(detected['points']),'rejections':rejected,
        'channel_rejections':hazards['channel_rejections'],'parameters':params,'model':detected['model'],
        'HydroIDs':hazards['HydroIDs'],'windows_inferred':detected['windows_inferred'],

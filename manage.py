@@ -51,7 +51,7 @@ def start_web(records):
         start_app(case['id'],ROOT/case['directory'],['app.py','--host','127.0.0.1','--port',str(case['port'])],env,records)
     start_app('portal',ROOT,['server.py'],dict(os.environ),records)
     for port in [network.CONFIG['port'],*[c['port'] for c in network.CONFIG['cases']]]:
-        for _ in range(100):
+        for _ in range(600):
             try:
                 with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/config',timeout=1) as response:
                     if response.status==200:break

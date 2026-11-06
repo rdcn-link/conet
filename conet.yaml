@@ -16,17 +16,20 @@ cases:
     port: 8872
 centers:
   - id: a
-    title: 数据中心 A
+    title: 西北科学数据中心
+    location: {longitude: 103.83, latitude: 36.06, label: 兰州（示意位置）}
     datasets:
       - {case: check-dams, name: terrain, title: 地形与沟道, description: 合成高程、集水区与沟道拓扑}
       - {case: observatory, name: g-band, title: g 波段星表, description: 合成 FITS 星表}
   - id: b
-    title: 数据中心 B
+    title: 华北科学数据中心
+    location: {longitude: 116.40, latitude: 39.90, label: 北京（示意位置）}
     datasets:
       - {case: check-dams, name: imagery, title: 遥感影像, description: 合成 RGB 影像与地理控制点}
       - {case: observatory, name: r-band, title: r 波段星表, description: 合成 FITS 星表}
   - id: c
-    title: 数据中心 C
+    title: 西南科学数据中心
+    location: {longitude: 102.71, latitude: 25.04, label: 昆明（示意位置）}
     datasets:
       - {case: check-dams, name: channels, title: 沟道栅格, description: 合成 HydroID 栅格}
       - {case: observatory, name: i-band, title: i 波段星表, description: 合成 FITS 星表}

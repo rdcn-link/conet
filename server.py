@@ -18,6 +18,25 @@ CACHE={};LOCK=threading.Lock()
 def get_json(url):
     with urlopen(url,timeout=3) as response:return json.load(response)
 
+def center_volumes(config, root):
+    """Logical file bytes published by each center; count overlapping roots once."""
+    volumes={}
+    for center in config['centers']:
+        seen=set();total=0;complete=True
+        for dataset in center['datasets']:
+            directory=root/'.state/cases'/dataset['case']/'data'/dataset.get('directory',center['id'])
+            if not directory.is_dir():
+                complete=False;continue
+            try:
+                for file in directory.rglob('*'):
+                    if file.is_file():
+                        resolved=file.resolve()
+                        if resolved not in seen:
+                            seen.add(resolved);total+=file.stat().st_size
+            except OSError:complete=False
+        volumes[center['id']]={'data_bytes':total if complete else None,'complete':complete}
+    return volumes
+
 def snapshot():
     connection_path=ROOT/'.state/network/connection.json'
     result={'at_ms':int(time.time()*1000),'synthetic':True,'cases':[],'available':False}
@@ -27,6 +46,14 @@ def snapshot():
         if file.exists():
             manifest=json.loads(file.read_text());total+=manifest.get('total_data_bytes',0);rows+=manifest.get('total_rows',0)
     result['data_bytes']=total;result['catalog_rows']=rows
+    result['center_volumes']=center_volumes(CONFIG,ROOT)
+    operators={}
+    for case in CONFIG['cases']:
+        definition=ROOT/case['directory']/'job.yaml'
+        if definition.exists():
+            for step in yaml.safe_load(definition.read_text()).get('steps',[]):
+                name=step['operator'];operators[name]=operators.get(name,0)+1
+    result['operators']=[{'name':k,'references':v} for k,v in sorted(operators.items())]
     if not connection_path.exists():return result
     connection=json.loads(connection_path.read_text());base=connection['web_urls']['union'].replace(urlsplit(connection['web_urls']['union']).hostname,'127.0.0.1')
     urls={'overview':base+'/api/overview','topology':base+'/api/topology'}
@@ -92,9 +119,9 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/snapshot':
             with LOCK:value=dict(CACHE)
             self.send(200,value);return
-        files={'/':'index.html','/screen':'screen.html','/screen/':'screen.html','/style.css':'style.css','/app.js':'app.js'}
+        files={'/':'index.html','/screen':'screen.html','/screen/':'screen.html','/style.css':'style.css','/app.js':'app.js','/screen.js':'screen.js','/screen.css':'screen.css','/assets/earth.jpg':'assets/earth.jpg','/assets/conet-mark.svg':'assets/conet-mark.svg'}
         if path in files:
-            file=ROOT/'web'/files[path];mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'}[file.suffix]
+            file=ROOT/'web'/files[path];mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.jpg':'image/jpeg','.svg':'image/svg+xml'}[file.suffix]
             self.send(200,file.read_bytes(),mime);return
         self.send(404,{'error':'未找到资源'})
     def do_POST(self):

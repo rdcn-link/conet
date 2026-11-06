@@ -16,9 +16,9 @@ flowchart LR
     Visitor --> Astro[天文案例界面]
     Dam --> U[DACP Union]
     Astro --> U
-    U <--> A[中心 A：地形与 g 星表]
-    U <--> B[中心 B：影像与 r 星表]
-    U <--> C[中心 C：沟道栅格与 i 星表]
+    U <--> A[西北科学数据中心：地形与 g 星表]
+    U <--> B[华北科学数据中心：影像与 r 星表]
+    U <--> C[西南科学数据中心：沟道栅格与 i 星表]
     U --> Screen[实时运行大屏]
 ```
 

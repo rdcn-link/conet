@@ -36,7 +36,7 @@ Required backend HTTP routes:
 
 Use `/cases/<id>/` for public links. The portal strips this prefix before forwarding. Static HTML/JS, API fetches and artifact URLs must include the public prefix. Case backends must not expose credentials. Included backends have one executor thread, a four-outstanding-request limit, persisted records and restart interruption markers. They accept JSON up to 16 KiB; the portal rejects cross-origin POSTs.
 
-The current launcher supports three centers `a/b/c`, as required by these cases. Custom analysis algorithms belong in case operators rather than portal or transport code. New file formats/backends should use XStream extension contracts, rather than format-specific core branches. Case registration does not constitute sandboxing of the case application's source.
+The `centers` list in `conet.yaml` determines the network size; the launcher and portal are not limited to three centers. Current names are illustrative and do not represent real institutions. Each center has an independent `id`, `title`, optional `location`, and `datasets`. The optional dataset `directory` selects a subdirectory inside its case data directory and defaults to the center ID. Restart the network after adding centers. Existing case generators produce three data sources; additional centers require corresponding data directories. Custom analysis algorithms belong in case operators rather than portal or transport code. New file formats/backends should use XStream extension contracts, rather than format-specific core branches. Case registration does not constitute sandboxing of the case application's source.
 
 ## Observability
 
@@ -49,3 +49,15 @@ The topology uses Union's `/api/topology`: receiver-observed task payloads over 
 The browser has no service credentials. A backend runner account accesses the Union; accepted Union membership permits the configured node operations. Private keys and Tokens remain under ignored `.state/`. The platform uses local configuration for administration and provides no remote account-management API. For public deployment, apply your normal reverse-proxy/access boundary and operational hardening.
 
 ![CONET operations screen](images/screen.png)
+
+## Globe screen and identity
+
+The screen uses an Asia-centered draggable globe, translucent side panels, member callouts, task-payload curves, status rings and case data/operator labels. Metrics come from live snapshots. An operator label's size reflects references in configured Job templates, not popularity. Online rate is the proportion of configured nodes with fresh approved observations. The top bar reports configured datasets, distinct template operators, visible case Jobs and currently online nodes. Unknown resources remain unknown.
+
+Each center's optional `location` in `conet.yaml` has `longitude`, `latitude` and `label`. The bundled Lanzhou/Beijing/Kunming coordinates are **illustrative**: all three demo services run on one machine. The globe texture comes from [three.js example assets](https://github.com/mrdoob/three.js/blob/dev/examples/textures/planets/earth_atmos_2048.jpg); the accompanying license is `web/assets/threejs-LICENSE.txt`. It is bundled locally, and the globe does not need an external map API. Node locations and source-data footprints are different concepts.
+
+CONET's SVG identity is `web/assets/conet-mark.svg`: six outer data nodes, an exchange node and crossing curved links express a connected network. It is used in the portal, screen, case headers and browser icons. The vector scales without a bitmap-generation dependency.
+
+### Per-center data volume
+
+The portal cards and screen show the logical file size of the datasets published by each configured center, summed across cases. Overlapping dataset paths within a center are counted once. Archive files count by their stored file size, without adding their expanded contents. Missing or unreadable data is displayed as `—`; this is neither disk capacity nor transfer volume. Values refresh with the status snapshot.

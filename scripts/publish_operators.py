@@ -72,13 +72,15 @@ def main():
             for file in sorted((ROOT/'cases'/case/'operator').glob('*.py')):archive.write(file,'src/'+file.name)
         digest=hashlib.sha256(source.read_bytes()).hexdigest()
         request('/v1/blobs/sha256/'+digest,'PUT',token=True,file=source)
-        for file in sorted((ROOT/'.state/cases'/case/'operators').glob('*/1.0/operator.yaml')):
+        used={step['operator'] for step in yaml.safe_load((ROOT/'cases'/case/'job.yaml').read_text())['steps']}
+        for file in sorted((ROOT/'.state/cases'/case/'operators').glob('*/*/operator.yaml')):
             local=yaml.safe_load(file.read_text())
+            if local['name']+'@'+local['version'] not in used:continue
             previous=request('/v1/submissions',token=True)
             previous=previous if isinstance(previous,list) else previous.get('submissions',[])
-            existing=next((s for s in previous if s.get('manifest',{}).get('name')==local['name'] and s.get('manifest',{}).get('version')=='1.0' and s.get('status')!='rejected'),None)
+            existing=next((s for s in previous if s.get('manifest',{}).get('name')==local['name'] and s.get('manifest',{}).get('version')==local['version'] and s.get('status')!='rejected'),None)
             if existing:report.append({'name':local['name'],'existing':True,'submission_id':existing.get('id',existing.get('submission_id'))});continue
-            manifest={'api_version':2,'name':local['name'],'version':'1.0','description':local['description'],'icon':local['icon'],'inputs':local['inputs'],'parameters':local['parameters'],'execution':{'executor':'python','entrypoint':'analysis','config':{}},'runtime':{k:runtime[k] for k in ['image','archive']},'build':{'language':'python'},'source_public':True,'provenance':{'source_archive':{'sha256':digest,'size':source.stat().st_size,'filename':source.name},'license':'Apache-2.0'}}
+            manifest={'api_version':2,'name':local['name'],'version':local['version'],'description':local['description'],'icon':local['icon'],'inputs':local['inputs'],'parameters':local['parameters'],'execution':{'executor':'python','entrypoint':'analysis','config':{}},'runtime':{k:runtime[k] for k in ['image','archive']},'build':{'language':'python'},'source_public':True,'provenance':{'source_archive':{'sha256':digest,'size':source.stat().st_size,'filename':source.name},'license':'Apache-2.0'}}
             result=request('/v1/submissions','POST',manifest,token=True);report.append({'name':local['name'],**result})
             (WORK/'submissions.json').write_text(json.dumps(report,indent=2))
             print(json.dumps(report[-1]),flush=True)

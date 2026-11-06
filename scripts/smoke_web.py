@@ -23,7 +23,8 @@ def main():
         try:request(prefix+'/api/jobs',{},headers={'Origin':'https://other.example'})
         except HTTPError as e:assert e.code==403
         else:raise AssertionError('Cross-origin input accepted')
-        payload={'bbox':cfg['manifest']['tiles'][0]['bbox_wgs84'],'min_confidence':.35} if case=='check-dams' else {'cone':[150,2,.15],'match_radius_arcsec':.8,'min_snr':5}
+        w,s,e,n=cfg['manifest']['tiles'][0]['bbox_wgs84'] if case=='check-dams' else [0,0,0,0]
+        payload={'region':{'type':'Polygon','coordinates':[[[w,s],[e,s],[e,n],[w,n],[w,s]]]},'min_confidence':.35} if case=='check-dams' else {'cone':[150,2,.15],'match_radius_arcsec':.8,'min_snr':5}
         job=request(prefix+'/api/jobs',payload);test_jobs.append((case,job['id']))
     deadline=time.monotonic()+360
     summaries=[]

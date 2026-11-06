@@ -5,14 +5,15 @@ steps:
     inputs: {}
     params: {uri: $TERRAIN_URI, view: bytes}
   - id: terrain_metrics
-    operator: check_dam_terrain@1.0
+    operator: check_dam_terrain@1.1
     inputs: {source: terrain_data}
-    params: {operation: terrain, region_bbox: $REGION_BBOX, entropy_bins: 16}
+    params: {operation: terrain, region: $REGION, region_bbox: $REGION_BBOX, entropy_bins: 16}
   - id: susceptible_channels
-    operator: check_dam_susceptibility@1.0
+    operator: check_dam_susceptibility@1.1
     inputs: {source: terrain_metrics}
     params:
       operation: susceptibility
+      region: $REGION
       region_bbox: $REGION_BBOX
       min_slope_ratio: 0.08
       max_slope_ratio: 0.50
@@ -23,20 +24,20 @@ steps:
     inputs: {}
     params: {uri: $IMAGERY_URI, view: bytes}
   - id: candidate_sites
-    operator: check_dam_detect@1.0
+    operator: check_dam_detect@1.1
     inputs: {source: imagery}
-    params: {operation: detect, region_bbox: $REGION_BBOX, min_confidence: $MIN_CONFIDENCE, duplicate_distance_m: 60}
+    params: {operation: detect, region: $REGION, region_bbox: $REGION_BBOX, min_confidence: $MIN_CONFIDENCE, duplicate_distance_m: 60}
   - id: channel_grids
     operator: read_item@1.0
     inputs: {}
     params: {uri: $CHANNEL_GRIDS_URI, view: bytes}
   - id: spatial_overlap
-    operator: check_dam_overlap@1.0
+    operator: check_dam_overlap@1.1
     inputs: {a_hazards: susceptible_channels, b_candidates: candidate_sites, c_grids: channel_grids}
-    params: {operation: overlap, region_bbox: $REGION_BBOX, bias: 3}
+    params: {operation: overlap, region: $REGION, region_bbox: $REGION_BBOX, bias: 3}
   - id: distribution_map
-    operator: check_dam_map@1.0
+    operator: check_dam_map@1.1
     inputs: {source: spatial_overlap}
-    params: {operation: map, region_bbox: $REGION_BBOX}
+    params: {operation: map, region: $REGION, region_bbox: $REGION_BBOX}
 outputs:
   map: distribution_map

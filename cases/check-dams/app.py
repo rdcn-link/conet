@@ -10,6 +10,11 @@ import threading
 import time
 from urllib.parse import urlparse
 import uuid
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent/"operator"))
+from polygon_region import selection
+import re
+from urllib.request import Request,urlopen
 from demo import HERE,STATE,execute
 from operator import itemgetter
 
@@ -32,7 +37,7 @@ def run(job):
         with LOCK:job['execution']=value;job['updated_at']=now();save(job)
     try:
         output=STATE/'results'/job['id']
-        summary=execute(job['bbox'],output,submitted,status,job.get('min_confidence',.35))
+        summary=execute(job['region'],output,submitted,status,job.get('min_confidence',.35))
         result=json.loads((output/'analysis.json').read_text())
         with LOCK:
             job.update(state='succeeded',finished_at=now(),summary=summary,result=result,
@@ -43,16 +48,13 @@ def run(job):
 
 def validate(payload,manifest):
     if not isinstance(payload,dict):raise ValueError('请求必须为 JSON 对象')
-    import math
-    bbox=payload.get('bbox')
-    if not isinstance(bbox,list) or len(bbox)!=4 or any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) for v in bbox):raise ValueError('请指定有效的西、南、东、北经纬度边界')
-    w,s,e,n=bbox
-    if not(-180<=w<e<=180 and -90<=s<n<=90):raise ValueError('WGS84 选择框无效')
-    mw,ms,me,mn=manifest['bbox_wgs84']
-    if e<=mw or w>=me or n<=ms or s>=mn:raise ValueError('所选区域未与合成研究区相交')
+    polygon=selection(payload.get('region'))
+    from shapely.geometry import box
+    if not polygon.intersects(box(*manifest['bbox_wgs84'])) or polygon.intersection(box(*manifest['bbox_wgs84'])).area<=0:
+        raise ValueError('所选多边形未与合成研究区相交')
     conf=payload.get('min_confidence',.35)
     if isinstance(conf,bool) or not isinstance(conf,(int,float)) or not .05<=conf<=.95:raise ValueError('置信度必须介于 0.05 和 0.95 之间')
-    return bbox,conf
+    return payload["region"],conf
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -62,10 +64,24 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path=urlparse(self.path).path
         try:
+            if path.startswith('/api/map-tiles/'):
+                match=re.fullmatch(r'/api/map-tiles/(\d{1,2})/(\d{1,6})/(\d{1,6})\.png',path)
+                if not match:self.send(404,{'error':'无效地图瓦片'});return
+                z,x,y=map(int,match.groups())
+                if not (0<=z<=18 and 0<=x<2**z and 0<=y<2**z):self.send(400,{'error':'无效地图范围'});return
+                cache=STATE/'map-tiles'/str(z)/str(x)/f'{y}.png'
+                if not cache.exists() or time.time()-cache.stat().st_mtime>7*86400:
+                    request=Request(f'https://tile.openstreetmap.org/{z}/{x}/{y}.png',headers={'User-Agent':'CONET/0.1 (scientific demonstration map)','Referer':'http://10.0.82.103:8870/'})
+                    with urlopen(request,timeout=8) as response:
+                        if response.headers.get_content_type()!='image/png':raise ValueError('地图服务未返回图片')
+                        data=response.read(1024*1024)
+                    cache.parent.mkdir(parents=True,exist_ok=True)
+                    temp=cache.with_suffix('.'+uuid.uuid4().hex+'.tmp');temp.write_bytes(data);temp.replace(cache)
+                self.send(200,cache.read_bytes(),'image/png');return
             if path=='/api/config':
                 manifest=json.loads((STATE/'data/manifest.json').read_text());connection=json.loads((STATE/'connection.json').read_text())
                 self.send(200,{'manifest':manifest,'web_urls':connection['web_urls'],'job_yaml':(HERE/'job.yaml').read_text()});return
-            if path in ('/api/basemap/imagery.png','/api/basemap/terrain.png'):
+            if path in ('/api/basemap/imagery.png','/api/basemap/terrain.png','/api/basemap/imagery-mercator.png','/api/basemap/terrain-mercator.png'):
                 self.send(200,(STATE/'visuals'/path.rsplit('/',1)[1]).read_bytes(),'image/png');return
             if path=='/api/overview':self.send(200,json.loads((STATE/'data/overview.geojson').read_text()));return
             if path=='/api/jobs':
@@ -98,10 +114,10 @@ class Handler(BaseHTTPRequestHandler):
             size=int(self.headers.get('Content-Length','0'))
             if not 0<size<=16384:raise ValueError('请求大小无效')
             if self.headers.get_content_type()!='application/json':raise ValueError('请求必须采用 JSON 格式')
-            payload=json.loads(self.rfile.read(size));bbox,conf=validate(payload,json.loads((STATE/'data/manifest.json').read_text()))
+            payload=json.loads(self.rfile.read(size));region,conf=validate(payload,json.loads((STATE/'data/manifest.json').read_text()))
             with LOCK:
                 if sum(j['state'] in ('queued','running') for j in JOBS.values())>=4:self.send(429,{'error':'任务队列已满，请等待当前分析完成'});return
-                job={'id':uuid.uuid4().hex,'state':'queued','created_at':now(),'bbox':bbox,'min_confidence':conf,'synthetic':True}
+                job={'id':uuid.uuid4().hex,'state':'queued','created_at':now(),'region':region,'min_confidence':conf,'synthetic':True}
                 JOBS[job['id']]=job;save(job);POOL.submit(run,job);self.send(202,job)
         except (ValueError,TypeError,json.JSONDecodeError) as error:self.send(400,{'error':str(error)})
 

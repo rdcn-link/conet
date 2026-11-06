@@ -21,20 +21,20 @@ def write_yaml(path,data):path.write_text(yaml.safe_dump(data,sort_keys=False))
 
 def build_operators():
     library=STATE/'operators'
-    schemas={'region_bbox':{'type':'array','items':{'type':'number'},'minItems':4,'maxItems':4},
+    schemas={'region':{'type':'object','properties':{'type':{'type':'string','enum':['Polygon']},'coordinates':{'type':'array','minItems':1,'maxItems':16,'items':{'type':'array','minItems':4,'maxItems':256,'items':{'type':'array','minItems':2,'maxItems':2,'items':{'type':'number'}}}}},'required':['type','coordinates'],'additionalProperties':False},'region_bbox':{'type':'array','items':{'type':'number'},'minItems':4,'maxItems':4},
       'operation':{'type':'string'},'entropy_bins':{'type':'integer','minimum':2,'maximum':32},
       'min_slope_ratio':{'type':'number'},'max_slope_ratio':{'type':'number'},'max_entropy':{'type':'number'},
       'max_downstream_hops':{'type':'integer'},'min_confidence':{'type':'number'},
       'duplicate_distance_m':{'type':'number'},'bias':{'type':'integer'}}
     for name,inputs in [('terrain',['source']),('susceptibility',['source']),('detect',['source']),('overlap',['a_hazards','b_candidates','c_grids']),('map',['source'])]:
-        full='check_dam_'+name;folder=library/full/'1.0';folder.mkdir(parents=True,exist_ok=True)
+        full='check_dam_'+name;folder=library/full/'1.1';folder.mkdir(parents=True,exist_ok=True)
         with zipfile.ZipFile(folder/'analysis.zip','w') as archive:
             for source in (HERE/'operator').glob('*.py'):archive.write(source,source.name)
             if name=='detect':archive.write(STATE/'model/model.pt','model.pt')
-        write_yaml(folder/'operator.yaml',dict(name=full,version='1.0',description='Synthetic three-center check-dam '+name,
+        write_yaml(folder/'operator.yaml',dict(name=full,version='1.1',description='Synthetic three-center check-dam '+name,
             image=IMAGE,executor='python',entrypoint='analysis',artifact='analysis.zip',
             inputs={n:{'representations':['bytes'],'formats':[]} for n in inputs},
-            parameters={'type':'object','properties':schemas,'required':['operation','region_bbox'],'additionalProperties':False},
+            parameters={'type':'object','properties':schemas,'required':['operation','region','region_bbox'],'additionalProperties':False},
             icon={'path':'M3 19L9 5L14 13L18 7L22 19ZM5 17H20','color':'#14866b'}))
     return library
 
@@ -57,14 +57,18 @@ def apply_variables(template,variables):
     return yaml.safe_dump(expand(yaml.safe_load(template)),sort_keys=False)
 
 
-def execute(bbox,output,on_submitted=None,on_status=None,min_confidence=.35):
+def execute(region,output,on_submitted=None,on_status=None,min_confidence=.35):
+    import sys
+    sys.path.insert(0,str(HERE/"operator"))
+    from polygon_region import selection
+    bbox=list(selection(region).bounds)
     # Catalog entries come from Union and keep its public names; no member URI
     # or explicit node placement is included in the submitted logical Job.
     connection=json.loads((STATE/'connection.json').read_text());items={}
     for dataset in catalog(connection):
         metadata=json.loads(dataset.description)
         if metadata.get('case')=='check-dams':items[metadata['center']]=dataset.uri
-    variables={'REGION_BBOX':bbox,'MIN_CONFIDENCE':min_confidence,'TERRAIN_URI':items['a']+'/terrain.bundle',
+    variables={'REGION':region,'REGION_BBOX':bbox,'MIN_CONFIDENCE':min_confidence,'TERRAIN_URI':items['a']+'/terrain.bundle',
                'IMAGERY_URI':items['b']+'/imagery.bundle','CHANNEL_GRIDS_URI':items['c']+'/channels.bundle'}
     token=Path(connection['token_file']).read_text().strip();out=bytearray()
     with Union(connection['union_url'],token=token,ca=Path(connection['ca']),timeout=300) as union:
@@ -109,6 +113,10 @@ def main():
     p=argparse.ArgumentParser(description='Run this case against the shared CONET Union')
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--bbox',type=float,nargs=4,required=True)
-    args=p.parse_args();print(json.dumps(execute(args.bbox,args.output),indent=2))
+    args=p.parse_args()
+    import sys
+    sys.path.insert(0,str(HERE/'operator'))
+    from polygon_region import rectangle
+    print(json.dumps(execute(rectangle(args.bbox),args.output),indent=2))
 
 if __name__=='__main__':main()

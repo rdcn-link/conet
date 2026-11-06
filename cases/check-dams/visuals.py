@@ -7,14 +7,14 @@ import numpy as np
 from PIL import Image
 from rasterio.io import MemoryFile
 from rasterio.transform import from_bounds
-from rasterio.warp import reproject,Resampling
+from rasterio.warp import reproject,Resampling,transform_bounds
 
 def prepare(state):
     data=state/'data';output=state/'visuals';output.mkdir(exist_ok=True)
     sources=[data/'a/terrain.bundle',data/'b/imagery.bundle']
     signature=json.dumps([(str(p.resolve()),p.stat().st_size,p.stat().st_mtime_ns) for p in sources])
     stamp=output/'signature.json'
-    if stamp.exists() and stamp.read_text()==signature and all((output/(n+'.png')).exists() for n in ['imagery','terrain']):return
+    if stamp.exists() and stamp.read_text()==signature and all((output/(n+'.png')).exists() for n in ['imagery','terrain','imagery-mercator','terrain-mercator']):return
     manifest=json.loads((data/'manifest.json').read_text());size=2048
     transform=from_bounds(*manifest['bbox_wgs84'],size,size)
     for kind,path in zip(['terrain','imagery'],sources):
@@ -33,4 +33,8 @@ def prepare(state):
                         rgb=np.moveaxis(np.clip(colors*shade[:,:,None],0,255).astype('uint8'),2,0)
                     for band in range(3):reproject(rgb[band],mosaic[band],src_transform=src_transform,src_crs=raster.crs,dst_transform=transform,dst_crs='EPSG:4326',resampling=Resampling.bilinear,init_dest_nodata=False)
         Image.fromarray(np.moveaxis(mosaic,0,2)).save(output/(kind+'.png'),optimize=True)
+        projected=np.zeros_like(mosaic)
+        projected_transform=from_bounds(*transform_bounds('EPSG:4326','EPSG:3857',*manifest['bbox_wgs84']),size,size)
+        for band in range(3):reproject(mosaic[band],projected[band],src_transform=transform,src_crs='EPSG:4326',dst_transform=projected_transform,dst_crs='EPSG:3857',resampling=Resampling.bilinear)
+        Image.fromarray(np.moveaxis(projected,0,2)).save(output/(kind+'-mercator.png'),optimize=True)
     stamp.write_text(signature)

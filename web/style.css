@@ -3,3 +3,7 @@
 
 .screen #network{height:calc(100vh - 390px);min-height:400px;max-height:740px}.screen .network-panel{min-height:0}.screen .case-body p{display:none}.screen .case-body{padding:10px 12px}.screen .case-body .tags{margin-bottom:6px}.screen .case-bottom{margin-top:8px;padding-top:8px}.screen .center-card{padding:10px 0}.screen .resource{display:block;font-size:10px;line-height:1.8}.screen .resource span span{margin-left:8px}.screen .glass{padding:16px}.screen .dataset{line-height:1.8}@media(max-width:700px){.screen #network{height:430px}}
 @keyframes flow{to{stroke-dashoffset:-40}}.active-flow{stroke-dasharray:5 8;animation:flow 2s linear infinite}@media(prefers-reduced-motion:reduce){.active-flow{animation:none}}
+
+.brand img{width:46px;height:46px;display:block;flex-shrink:0}
+
+.center-volume{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:#718791;font-size:12px}.center-volume strong{font-size:20px;color:#238d94;font-weight:600}
