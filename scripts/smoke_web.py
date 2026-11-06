@@ -12,7 +12,7 @@ def main():
         data=None if payload is None else json.dumps(payload).encode()
         with urlopen(Request(base+path,data,{'Content-Type':'application/json',**(headers or {})}),timeout=15) as response:
             value=response.read();mime=response.headers.get('Content-Type','');return json.loads(value) if 'json' in mime else value
-    config=request('/api/config');assert len(config['centers'])==3
+    config=request('/api/config');assert len(config['centers'])==7
     test_jobs=[]
     for case in ['check-dams','observatory']:
         prefix='/cases/'+case
@@ -41,8 +41,9 @@ def main():
         assert len(job['result']['features'] if case=='check-dams' else job['result']['rows'])>0
         summaries.append({'case':case,'application_id':identifier,**job['summary']})
     snap=request('/api/snapshot');assert snap['available']
-    assert len(snap['overview']['members'])==3
-    assert all(m['state']=='approved' and m.get('center_id') in ['a','b','c'] for m in snap['overview']['members'])
-    assert all(n>=2 for n in snap['topology']['participation'].values())
+    assert len(snap['overview']['members'])==len(config['centers'])
+    assert all(m['state']=='approved' and m.get('center_id') in {c['id'] for c in config['centers']} for m in snap['overview']['members'])
+    participants={m['identity'] for m in snap['overview']['members'] if m['center_id'] in ['a','b','c']}
+    assert all(snap['topology']['participation'].get(identity,0)>=2 for identity in participants)
     print(json.dumps(summaries,indent=2,ensure_ascii=False))
 if __name__=='__main__':main()

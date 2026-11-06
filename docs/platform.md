@@ -54,10 +54,16 @@ The browser has no service credentials. A backend runner account accesses the Un
 
 The screen uses an Asia-centered draggable globe, translucent side panels, member callouts, task-payload curves, status rings and case data/operator labels. Metrics come from live snapshots. An operator label's size reflects references in configured Job templates, not popularity. Online rate is the proportion of configured nodes with fresh approved observations. The top bar reports configured datasets, distinct template operators, visible case Jobs and currently online nodes. Unknown resources remain unknown.
 
-Each center's optional `location` in `conet.yaml` has `longitude`, `latitude` and `label`. The bundled Lanzhou/Beijing/Kunming coordinates are **illustrative**: all three demo services run on one machine. The globe texture comes from [three.js example assets](https://github.com/mrdoob/three.js/blob/dev/examples/textures/planets/earth_atmos_2048.jpg); the accompanying license is `web/assets/threejs-LICENSE.txt`. It is bundled locally, and the globe does not need an external map API. Node locations and source-data footprints are different concepts.
+Each center's optional `location` in `conet.yaml` has `longitude`, `latitude` and `label`. The bundled Lanzhou/Beijing/Kunming coordinates are **illustrative**: all seven demo services run on one machine. The globe texture comes from [three.js example assets](https://github.com/mrdoob/three.js/blob/dev/examples/textures/planets/earth_atmos_2048.jpg); the accompanying license is `web/assets/threejs-LICENSE.txt`. It is bundled locally, and the globe does not need an external map API. Node locations and source-data footprints are different concepts.
 
-CONET's SVG identity is `web/assets/conet-mark.svg`: six outer data nodes, an exchange node and crossing curved links express a connected network. It is used in the portal, screen, case headers and browser icons. The vector scales without a bitmap-generation dependency.
+CONET's SVG identity is `web/assets/conet-mark.svg`: four outer nodes connect through a central hub, with a subtle perimeter link expressing a cooperative network. It is used in the portal, screen, case headers and browser icons.
 
 ### Per-center data volume
 
 The portal cards and screen show the logical file size of the datasets published by each configured center, summed across cases. Overlapping dataset paths within a center are counted once. Archive files count by their stored file size, without adding their expanded contents. Missing or unreadable data is displayed as `—`; this is neither disk capacity nor transfer volume. Values refresh with the status snapshot.
+
+### Seven-center deployment and live motion
+
+The default network contains Northwest, North China, Southwest, East China, Central China, South China and Northeast China science data centers, all local demonstration nodes. The original six scientific inputs remain published by the first three centers. The other four publish a tile-coverage index, a band index, analysis settings and a survey reference. `scripts/generate_reference_data.py` derives these small datasets from case manifests and actual settings automatically on startup; it may also be run separately. They do not duplicate the GB-scale inputs or imply that each analysis uses all seven centers. Per-center volumes show real file sizes.
+
+Online nodes have a breathing halo. Moving packets appear only when real transfer samples are active. Payload totals and rates use measured values, with `—` for unknown rates. A reduced-motion preference disables these animations.

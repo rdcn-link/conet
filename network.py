@@ -93,6 +93,7 @@ def stop():
 def up():
     if (STATE/'processes.json').exists() and json.loads((STATE/'processes.json').read_text()):raise RuntimeError('Case already has processes; run down first')
     STATE.mkdir(parents=True,exist_ok=True)
+    subprocess.run([sys.executable,str(ROOT/'scripts/generate_reference_data.py')],check=True)
     library=build_operators()
     for image in ['xstream/check-dams-demo:1.0','xstream/observatory-demo:1.0']:
         subprocess.run(['sudo','-n','docker','image','inspect',image],check=True,stdout=subprocess.DEVNULL)

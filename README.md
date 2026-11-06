@@ -2,7 +2,7 @@
 
 [中文](README_zh.md)
 
-CONET connects data centers through a DACP Union and provides Chinese-language scientific case interfaces and a live operations screen. Three local DACP nodes publish six datasets. Both cases submit fixed, variable-driven Jobs to the **same Union**; the Union selects execution placement and XStream executes the steps.
+CONET connects data centers through a DACP Union and provides Chinese-language scientific case interfaces and a live operations screen. Seven local DACP nodes publish ten datasets: six scientific source datasets and four small reference datasets. Both cases submit fixed, variable-driven Jobs to the **same Union**; the Union selects execution placement and XStream executes the steps.
 
 - **Check dams:** select a geographic box, identify synthetic dam structures, screen them against flash-flood-susceptible channels, and download a distribution map and GeoJSON.
 - **Observatories:** select a sky cone, crossmatch synthetic g/r/i FITS catalogs, inspect colors and uncertainties, and download the matched catalog.
@@ -19,6 +19,10 @@ flowchart LR
     U <--> A[Northwest Science Data Center: terrain + g catalog]
     U <--> B[North China Science Data Center: imagery + r catalog]
     U <--> C[Southwest Science Data Center: channel grids + i catalog]
+    U <--> D[East China: tile coverage index]
+    U <--> E[Central China: band index]
+    U <--> F[South China: analysis settings]
+    U <--> G[Northeast China: survey reference]
     U --> Screen[Live operations screen]
 ```
 

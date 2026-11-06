@@ -76,7 +76,7 @@ export DACP_HOME=/path/to/dacp-codex
 .venv/bin/python manage.py down
 ```
 
-Startup creates one persistent CA, unique certificates for each member and Union, Union grants and a runner account under `.state/network/`. It creates three nodes and a Union with available local ports, waits for all six datasets, starts two loopback case backends, then the portal on port 8870. The node/Union dashboards bind to all interfaces on dynamically allocated ports; their URLs are in `.state/network/connection.json`. Expose the portal only on a trusted network or put it behind your normal access boundary. The portal never sends service Tokens or private keys to browsers.
+Startup creates one persistent CA, unique certificates for each member and Union, Union grants and a runner account under `.state/network/`. It creates seven nodes and a Union with available local ports, generates four small reference datasets from the existing case manifests and analysis settings, waits for all ten datasets, starts two loopback case backends, then the portal on port 8870. The node/Union dashboards bind to all interfaces on dynamically allocated ports; their URLs are in `.state/network/connection.json`. Expose the portal only on a trusted network or put it behind your normal access boundary. The portal never sends service Tokens or private keys to browsers.
 
 All process IDs and application start times are recorded. Shutdown checks ownership before signaling only those process groups. Startup failure rolls back processes it started. Scientific input data and completed results survive shutdown. Logs are `.state/*.log` and `.state/network/*.log`.
 

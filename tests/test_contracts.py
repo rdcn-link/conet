@@ -32,9 +32,10 @@ class StreamContracts(unittest.TestCase):
                 seen.add(step['id'])
             for source in job['outputs'].values():self.assertIn(source.split(':')[0],seen)
     def test_dataset_case_routing(self):
-        config=yaml.safe_load((ROOT/'conet.yaml').read_text());self.assertEqual(len(config['centers']),3)
+        config=yaml.safe_load((ROOT/'conet.yaml').read_text());self.assertEqual(len(config['centers']),7)
         for center in config['centers']:
-            self.assertEqual({d['case'] for d in center['datasets']},{c['id'] for c in config['cases']})
+            self.assertTrue(center['datasets'])
+            self.assertTrue({d['case'] for d in center['datasets']}.issubset({c['id'] for c in config['cases']}))
             for d in center['datasets']:self.assertTrue(d['title'] and d['description'])
 
 class TerrainContracts(unittest.TestCase):
