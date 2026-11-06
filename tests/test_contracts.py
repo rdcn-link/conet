@@ -85,4 +85,25 @@ class ObservabilityContracts(unittest.TestCase):
             self.assertEqual([m['center_id'] for m in value['overview']['members']],['c','a'])
             cases={c['id']:c for c in value['cases']};self.assertFalse(cases['check-dams']['available']);self.assertTrue(cases['observatory']['available']);self.assertEqual(len(cases['observatory']['jobs']),1)
 
+class MapPreviewContracts(unittest.TestCase):
+    def test_georeferenced_preview_and_reuse(self):
+        import tempfile,tarfile
+        from rasterio.io import MemoryFile
+        from rasterio.transform import from_bounds
+        from PIL import Image
+        visuals=load('dam_visuals',ROOT/'cases/check-dams/visuals.py')
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp);data=state/'data';(data/'a').mkdir(parents=True);(data/'b').mkdir()
+            (data/'manifest.json').write_text(json.dumps({'bbox_wgs84':[10,20,11,21]}))
+            for center,name,member,values in [('a','terrain.bundle','dem.tif',np.full((1,8,8),1000,dtype='float32')),('b','imagery.bundle','imagery.tif',np.broadcast_to(np.array([.25,.5,.75],dtype='float32')[:,None,None],(3,8,8)).copy())]:
+                with MemoryFile() as mem:
+                    with mem.open(driver='GTiff',height=8,width=8,count=len(values),dtype='float32',crs='EPSG:4326',transform=from_bounds(10,20,11,21,8,8)) as raster:raster.write(values)
+                    content=mem.read()
+                with tarfile.open(data/center/name,'w') as archive:
+                    info=tarfile.TarInfo('t00/'+member);info.size=len(content);archive.addfile(info,io.BytesIO(content))
+            visuals.prepare(state)
+            preview=state/'visuals/imagery.png'
+            with Image.open(preview) as image:self.assertEqual(image.getpixel((1024,1024)),(63,127,191))
+            before=preview.stat().st_mtime_ns;visuals.prepare(state);self.assertEqual(preview.stat().st_mtime_ns,before)
+
 if __name__=='__main__':unittest.main()

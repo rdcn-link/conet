@@ -65,6 +65,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/config':
                 manifest=json.loads((STATE/'data/manifest.json').read_text());connection=json.loads((STATE/'connection.json').read_text())
                 self.send(200,{'manifest':manifest,'web_urls':connection['web_urls'],'job_yaml':(HERE/'job.yaml').read_text()});return
+            if path in ('/api/basemap/imagery.png','/api/basemap/terrain.png'):
+                self.send(200,(STATE/'visuals'/path.rsplit('/',1)[1]).read_bytes(),'image/png');return
             if path=='/api/overview':self.send(200,json.loads((STATE/'data/overview.geojson').read_text()));return
             if path=='/api/jobs':
                 with LOCK:self.send(200,[{k:v for k,v in j.items() if k not in ('result','execution')} for j in sorted(JOBS.values(),key=itemgetter('created_at'),reverse=True)])
@@ -81,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not file.is_file():self.send(404,{'error':'成果文件不可用'});return
                 mime='image/svg+xml' if file.suffix=='.svg' else 'application/geo+json' if file.suffix=='.geojson' else 'application/json' if file.suffix=='.json' else 'application/yaml'
                 self.send(200,file.read_bytes(),mime);return
-            names={'/':'index.html','/app.js':'app.js','/style.css':'style.css'}
+            names={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/map.js':'map.js'}
             if path in names:
                 file=HERE/'web'/names[path];mime='text/html; charset=utf-8' if file.suffix=='.html' else 'text/javascript; charset=utf-8' if file.suffix=='.js' else 'text/css; charset=utf-8'
                 self.send(200,file.read_bytes(),mime);return
@@ -110,6 +112,8 @@ def main():
         job=json.loads(file.read_text())
         if job['state'] in ('queued','running'):job.update(state='interrupted',error='案例服务已重启，请先在 Union 看板核对原任务再决定是否重新提交')
         JOBS[job['id']]=job
+    from visuals import prepare
+    prepare(STATE)
     print(f'Check-dam demo listening on {a.host}:{a.port}',flush=True)
     ThreadingHTTPServer((a.host,a.port),Handler).serve_forever()
 

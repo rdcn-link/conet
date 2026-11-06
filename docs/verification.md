@@ -20,7 +20,7 @@ Subsequent smoke-test reruns confirmed the same counts. These are reproducibilit
 .venv/bin/python scripts/smoke_web.py --url http://127.0.0.1:8870
 ```
 
-The 14 unit/contract tests cover chunk fragmentation and empty chunks, alias-free repeated variables, graph source references, dataset ownership tags, entropy, slope units, topology cycles, coordinate-based matching independent of IDs, ambiguity rejection, right-ascension wrapping, missing bands, pairwise separation propagated color errors, and partial upstream failure with order-independent member mapping.
+The 15 unit/contract tests cover chunk fragmentation and empty chunks, alias-free repeated variables, graph source references, dataset ownership tags, entropy, slope units, topology cycles, coordinate-based matching independent of IDs, ambiguity rejection, right-ascension wrapping, missing bands, pairwise separation propagated color errors, and partial upstream failure with order-independent member mapping, and georeferenced preview pixels/cache reuse.
 
 The smoke test submits both real analyses, waits for completion, retrieves every advertised artifact, verifies nonempty results, checks all three approved members and their participation counts, and rejects non-object and cross-origin requests. Browser checks cover portal, screen and both case pages, with no JavaScript exceptions. Host dependency checks report no broken installed requirements.
 

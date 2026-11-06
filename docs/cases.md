@@ -69,3 +69,9 @@ Colors are `g−r` and `r−i`; their errors are quadrature sums. Illustrative r
 The Web interface displays a sky plot, color–color plot, hover inspection and first-200-row table. Complete matches are downloadable as `matches.csv` and `analysis.json`, together with `variables.yaml`.
 
 ![Observatory analysis interface](images/observatory.png)
+
+## Interactive visualization
+
+The check-dam Web map displays offline, WGS84-reprojected previews derived from the actual synthetic RGB and DEM inputs. Switch imagery/terrain, zoom with the wheel or buttons, drag to pan, toggle channels/candidates, click a candidate or table row for details, and export the current map as PNG. The region selector also displays the imagery preview. Previews are display assets under `.state/cases/check-dams/visuals/`, generated once at application startup and invalidated when input file size/timestamp changes. They do not change analysis, execution or placement. No external tile server is needed. Synthetic plateaus and motifs do not represent real terrain or satellite imagery; the downloadable SVG remains a schematic analysis artifact.
+
+Astronomy plots use the actual matched sources on a dark coordinate grid. Star size reflects the synthetic g magnitude, and selecting a source in either chart or the table highlights it in both charts and displays photometry and matching details. The selection map displays matched-source positions after completion. No fabricated survey background is added.
