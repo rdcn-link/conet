@@ -59,7 +59,7 @@ def datasets_for(center):
         directory=case_state(case)/'data'/entry.get('directory',center)
         if not directory.resolve().is_relative_to((case_state(case)/'data').resolve()):raise ValueError('Dataset directory must remain inside case data')
         if not directory.is_dir():raise ValueError(f'Missing data: {directory}; see generation instructions')
-        result[entry['name']]={'provider':'directory','description':json.dumps({'title':entry['title'],'description':entry['description'],'case':case['id'],'center':center,'synthetic':True}),'source':{'root':str(directory)}}
+        result[entry['name']]={'provider':'directory','description':json.dumps({'title':entry['title'],'description':entry['description'],'case':case['id'],'center':center,'dataset':entry['name'],'synthetic':True}),'source':{'root':str(directory)}}
     return result
 
 def save_processes(processes):(STATE/'processes.json').write_text(json.dumps(processes,indent=2))

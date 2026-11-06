@@ -56,7 +56,7 @@ The screen uses an Asia-centered draggable globe, translucent side panels, membe
 
 Each center's optional `location` in `conet.yaml` has `longitude`, `latitude` and `label`. The bundled Lanzhou/Beijing/Kunming coordinates are **illustrative**: all seven demo services run on one machine. The globe texture comes from [three.js example assets](https://github.com/mrdoob/three.js/blob/dev/examples/textures/planets/earth_atmos_2048.jpg); the accompanying license is `web/assets/threejs-LICENSE.txt`. It is bundled locally, and the globe does not need an external map API. Node locations and source-data footprints are different concepts.
 
-CONET's SVG identity is `web/assets/conet-mark.svg`: four outer nodes connect through a central hub, with a subtle perimeter link expressing a cooperative network. It is used in the portal, screen, case headers and browser icons.
+CONET's SVG identity is `web/assets/conet-mark.svg`: a subtle distributed network forms the background, while two interlocking teal and blue rings in the foreground express cooperation between participants. It is used in the portal, screen, case headers and browser icons.
 
 ### Per-center data volume
 
@@ -64,8 +64,6 @@ The portal cards and screen show the logical file size of the datasets published
 
 ### Seven-center deployment and live motion
 
-The default network contains Northwest, North China, Southwest, East China, Central China, South China and Northeast China science data centers, all local demonstration nodes. The original six scientific inputs remain published by the first three centers. The other four publish a tile-coverage index, a band index, analysis settings and a survey reference. `scripts/generate_reference_data.py` derives these small datasets from case manifests and actual settings automatically on startup; it may also be run separately. They do not duplicate the GB-scale inputs or imply that each analysis uses all seven centers. Per-center volumes show real file sizes.
+The default network contains four disciplinary data centers (Terrain and Geomorphology, Remote Sensing, Hydrology and Watershed, and Geospatial) and three regional observatories (Central, South and Northeast China), all local demonstration nodes. The terrain, imagery and channel inputs are published by the Terrain, Remote Sensing and Hydrology centers. The g/r/i catalogs are published by the Central, South and Northeast China observatories. The Geospatial center publishes tile indices and analysis settings; the Central and Northeast observatories also publish band indices and survey references. `scripts/generate_reference_data.py` derives these small datasets from case manifests and actual settings automatically on startup; it may also be run separately. They do not duplicate the GB-scale inputs or imply that each analysis uses all seven centers. Per-center volumes show real file sizes.
 
 Online nodes have a breathing halo. Moving packets appear only when real transfer samples are active. Payload totals and rates use measured values, with `—` for unknown rates. A reduced-motion preference disables these animations.
-
-Center names combine region, discipline and “Data Center”. The Northwest, North China and Southwest centers publish both geoscience-related data and astronomical catalogs, so their names include both disciplines. East China focuses on geographic information, Central and Northeast China on astronomy, and South China on geoscience. These are demonstration names, not real institutions.

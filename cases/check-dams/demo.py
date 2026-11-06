@@ -67,9 +67,9 @@ def execute(region,output,on_submitted=None,on_status=None,min_confidence=.35):
     connection=json.loads((STATE/'connection.json').read_text());items={}
     for dataset in catalog(connection):
         metadata=json.loads(dataset.description)
-        if metadata.get('case')=='check-dams':items[metadata['center']]=dataset.uri
-    variables={'REGION':region,'REGION_BBOX':bbox,'MIN_CONFIDENCE':min_confidence,'TERRAIN_URI':items['a']+'/terrain.bundle',
-               'IMAGERY_URI':items['b']+'/imagery.bundle','CHANNEL_GRIDS_URI':items['c']+'/channels.bundle'}
+        if metadata.get('case')=='check-dams':items[metadata['dataset']]=dataset.uri
+    variables={'REGION':region,'REGION_BBOX':bbox,'MIN_CONFIDENCE':min_confidence,'TERRAIN_URI':items['terrain']+'/terrain.bundle',
+               'IMAGERY_URI':items['imagery']+'/imagery.bundle','CHANNEL_GRIDS_URI':items['channels']+'/channels.bundle'}
     token=Path(connection['token_file']).read_text().strip();out=bytearray()
     with Union(connection['union_url'],token=token,ca=Path(connection['ca']),timeout=300) as union:
         with union.submit(apply_variables((HERE/'job.yaml').read_text(),variables)) as execution:

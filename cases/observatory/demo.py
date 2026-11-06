@@ -58,9 +58,9 @@ def execute(cone,output,on_submitted=None,on_status=None,match_radius=.8,min_snr
     connection=json.loads((STATE/'connection.json').read_text());items={}
     for dataset in catalog(connection):
         metadata=json.loads(dataset.description)
-        if metadata.get('case')=='observatory':items[metadata['center']]=dataset.uri
+        if metadata.get('case')=='observatory':items[metadata['dataset']]=dataset.uri
     variables={'CONE':cone,'MATCH_RADIUS_ARCSEC':match_radius,'MIN_SNR':min_snr,
-               'G_CATALOG_URI':items['a']+'/catalog.bundle','R_CATALOG_URI':items['b']+'/catalog.bundle','I_CATALOG_URI':items['c']+'/catalog.bundle'}
+               'G_CATALOG_URI':items['g-band']+'/catalog.bundle','R_CATALOG_URI':items['r-band']+'/catalog.bundle','I_CATALOG_URI':items['i-band']+'/catalog.bundle'}
     token=Path(connection['token_file']).read_text().strip();out=bytearray()
     with Union(connection['union_url'],token=token,ca=Path(connection['ca']),timeout=300) as union:
         with union.submit(apply_variables((HERE/'job.yaml').read_text(),variables)) as execution:
