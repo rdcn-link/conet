@@ -16,40 +16,40 @@ cases:
     port: 8872
 centers:
   - id: a
-    title: 西北科学数据中心
+    title: 西北地学与天文数据中心
     location: {longitude: 103.83, latitude: 36.06, label: 兰州（示意位置）}
     datasets:
       - {case: check-dams, name: terrain, title: 地形与沟道, description: 合成高程、集水区与沟道拓扑}
       - {case: observatory, name: g-band, title: g 波段星表, description: 合成 FITS 星表}
   - id: b
-    title: 华北科学数据中心
+    title: 华北遥感与天文数据中心
     location: {longitude: 116.40, latitude: 39.90, label: 北京（示意位置）}
     datasets:
       - {case: check-dams, name: imagery, title: 遥感影像, description: 合成 RGB 影像与地理控制点}
       - {case: observatory, name: r-band, title: r 波段星表, description: 合成 FITS 星表}
   - id: c
-    title: 西南科学数据中心
+    title: 西南水文与天文数据中心
     location: {longitude: 102.71, latitude: 25.04, label: 昆明（示意位置）}
     datasets:
       - {case: check-dams, name: channels, title: 沟道栅格, description: 合成 HydroID 栅格}
       - {case: observatory, name: i-band, title: i 波段星表, description: 合成 FITS 星表}
   - id: d
-    title: 华东科学数据中心
+    title: 华东地理信息数据中心
     location: {longitude: 121.47, latitude: 31.23, label: 上海（示意位置）}
     datasets:
       - {case: check-dams, name: tile-coverage, directory: references/d, title: 研究区瓦片索引, description: 由合成研究区清单生成的真实瓦片覆盖索引}
   - id: e
-    title: 华中科学数据中心
+    title: 华中天文数据中心
     location: {longitude: 114.31, latitude: 30.59, label: 武汉（示意位置）}
     datasets:
       - {case: observatory, name: band-catalog, directory: references/e, title: 多波段数据索引, description: 合成星表各波段的记录数与文件大小索引}
   - id: f
-    title: 华南科学数据中心
+    title: 华南地学数据中心
     location: {longitude: 113.26, latitude: 23.13, label: 广州（示意位置）}
     datasets:
       - {case: check-dams, name: analysis-methods, directory: references/f, title: 地学分析方法参数, description: 演示案例使用的沟道筛选与空间叠加参数}
   - id: g
-    title: 东北科学数据中心
+    title: 东北天文数据中心
     location: {longitude: 123.43, latitude: 41.80, label: 沈阳（示意位置）}
     datasets:
       - {case: observatory, name: survey-coverage, directory: references/g, title: 天区覆盖与测光参考, description: 合成星表的天区覆盖范围与坐标测光体系说明}

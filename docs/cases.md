@@ -8,16 +8,16 @@ This case identifies **existing synthetic check-dam structures** within suscepti
 
 | Center | Data | Approximate volume |
 |---|---|---:|
-| 西北科学数据中心 | DEM, catchments, complete channel geometry/topology | 265 MiB |
-| 华北科学数据中心 | RGB imagery and georeferencing control information | 530 MiB |
-| 西南科学数据中心 | HydroID channel rasters | 177 MiB |
+| Northwest Geoscience and Astronomy Data Center | DEM, catchments, complete channel geometry/topology | 265 MiB |
+| North China Remote Sensing and Astronomy Data Center | RGB imagery and georeferencing control information | 530 MiB |
+| Southwest Hydrology and Astronomy Data Center | HydroID channel rasters | 177 MiB |
 
 ```mermaid
 flowchart LR
-    A[Northwest Science Data Center: terrain] --> S[Slope and entropy]
+    A[Northwest Geoscience and Astronomy Data Center: terrain] --> S[Slope and entropy]
     S --> H[Susceptible channels]
-    B[North China Science Data Center: imagery] --> Y[YOLO segmentation]
-    C[Southwest Science Data Center: HydroID raster] --> O[Spatial overlay]
+    B[North China Remote Sensing and Astronomy Data Center: imagery] --> Y[YOLO segmentation]
+    C[Southwest Hydrology and Astronomy Data Center: HydroID raster] --> O[Spatial overlay]
     H --> O
     Y --> O
     O --> M[Distribution map and GeoJSON]

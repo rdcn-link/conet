@@ -16,13 +16,13 @@ flowchart LR
     Visitor --> Astro[Observatory interface]
     Dam --> U[DACP Union]
     Astro --> U
-    U <--> A[Northwest Science Data Center: terrain + g catalog]
-    U <--> B[North China Science Data Center: imagery + r catalog]
-    U <--> C[Southwest Science Data Center: channel grids + i catalog]
-    U <--> D[East China: tile coverage index]
-    U <--> E[Central China: band index]
-    U <--> F[South China: analysis settings]
-    U <--> G[Northeast China: survey reference]
+    U <--> A[Northwest Geoscience and Astronomy Data Center: terrain + g catalog]
+    U <--> B[North China Remote Sensing and Astronomy Data Center: imagery + r catalog]
+    U <--> C[Southwest Hydrology and Astronomy Data Center: channel grids + i catalog]
+    U <--> D[East China Geographic Information Data Center: tile coverage index]
+    U <--> E[Central China Astronomy Data Center: band index]
+    U <--> F[South China Geoscience Data Center: analysis settings]
+    U <--> G[Northeast China Astronomy Data Center: survey reference]
     U --> Screen[Live operations screen]
 ```
 
