@@ -1,0 +1,32 @@
+name: CONET
+host: 0.0.0.0
+port: 8870
+cases:
+  - id: check-dams
+    title: 山洪沟道淤地坝识别
+    title_en: Check-dam identification
+    description: 融合地形、遥感影像与沟道栅格，筛选易发山洪沟道中的淤地坝。
+    directory: cases/check-dams
+    port: 8871
+  - id: observatory
+    title: 三天文台多波段交叉匹配
+    title_en: Three-observatory crossmatching
+    description: 联合 g、r、i 三波段星表，开展球面交叉匹配与颜色分析。
+    directory: cases/observatory
+    port: 8872
+centers:
+  - id: a
+    title: 数据中心 A
+    datasets:
+      - {case: check-dams, name: terrain, title: 地形与沟道, description: 合成高程、集水区与沟道拓扑}
+      - {case: observatory, name: g-band, title: g 波段星表, description: 合成 FITS 星表}
+  - id: b
+    title: 数据中心 B
+    datasets:
+      - {case: check-dams, name: imagery, title: 遥感影像, description: 合成 RGB 影像与地理控制点}
+      - {case: observatory, name: r-band, title: r 波段星表, description: 合成 FITS 星表}
+  - id: c
+    title: 数据中心 C
+    datasets:
+      - {case: check-dams, name: channels, title: 沟道栅格, description: 合成 HydroID 栅格}
+      - {case: observatory, name: i-band, title: i 波段星表, description: 合成 FITS 星表}

@@ -1,0 +1,51 @@
+# Platform and extension contracts
+
+[中文](platform_zh.md) · [Home](../README.md)
+
+## Services and ownership
+
+`network.py` creates the shared DACP nodes, credentials and Union. `manage.py` manages their lifecycle and the case applications. `server.py` serves the portal, proxies configured case HTTP backends and polls Union observations. The portal does not implement a new execution engine, data transport or authorization protocol.
+
+```mermaid
+sequenceDiagram
+    actor User
+    User->>Portal: Open case, choose region
+    Portal->>Case: POST /api/jobs
+    Case->>Union: Discover case-tagged datasets
+    Case->>Union: Submit fixed Job with resolved variables
+    Union->>Nodes: Plan and execute sub-Jobs
+    Nodes-->>Case: Stream final result through Union
+    Case-->>User: Status and visualized results
+    Portal->>Union: Poll overview and topology
+    Portal-->>User: Live operations screen
+```
+
+## Register a case
+
+The implemented extension boundary is a configured case HTTP backend, its source directory and associated datasets. Add an entry to `conet.yaml` with `id`, Chinese `title`, `title_en`, `description`, `directory`, and an unused loopback `port`. Provide `app.py` accepting `--host/--port` and `demo.py` exporting `build_operators()`. Both must honor `CONET_CASE_STATE`. The operator installer returns a versioned local library under that state directory. Add the case's datasets under centers, with unique names, `case`, `title` and `description`. Case data must exist at `.state/cases/<case-id>/data/<center-id>/` before startup.
+
+Required backend HTTP routes:
+
+| Route | Contract |
+|---|---|
+| `GET /api/config` | Public, no credentials; manifest, template and dashboard links |
+| `GET /api/jobs` | Array with `id`, `state`, `created_at`, optional `summary` |
+| `GET /api/jobs/<id>` | Job detail, Union Job ID, execution observations, result and artifact links |
+| `POST /api/jobs` | Validated JSON variables; HTTP 202 with queued Job; HTTP 400 for bad input |
+| `GET /results/<id>/<file>` | Allowlisted completed artifacts only |
+
+Use `/cases/<id>/` for public links. The portal strips this prefix before forwarding. Static HTML/JS, API fetches and artifact URLs must include the public prefix. Case backends must not expose credentials. Included backends have one executor thread, a four-outstanding-request limit, persisted records and restart interruption markers. They accept JSON up to 16 KiB; the portal rejects cross-origin POSTs.
+
+The current launcher supports three centers `a/b/c`, as required by these cases. Custom analysis algorithms belong in case operators rather than portal or transport code. New file formats/backends should use XStream extension contracts, rather than format-specific core branches. Case registration does not constitute sandboxing of the case application's source.
+
+## Observability
+
+`GET /api/config` returns public case/center definitions. `GET /api/snapshot` returns a cached snapshot, refreshed every three seconds using concurrent, three-second-timeout upstream requests. An unavailable case/member must not block the other observations. Center mapping uses actual configured node URIs rather than list ordering. Stale observations and unavailable measurements are labeled; no synthetic health or traffic values are invented.
+
+The topology uses Union's `/api/topology`: receiver-observed task payloads over the latest attempt of up to 100 recent Jobs. It is **not a lifetime network-byte total**. Rates use deltas for identical active sample keys and increasing observation timestamps; absent comparable samples display `—`. Membership links indicate organization and are not counted as traffic. Union-to-client final output traffic is not supplied by that topology endpoint and is not fabricated. CPU and heap values come from member resource reports; participation comes from Union's participation counts. Cases report cumulative completed-analysis summaries, not unique-object counts across repeated selections.
+
+## Security and storage
+
+The browser has no service credentials. A backend runner account accesses the Union; accepted Union membership permits the configured node operations. Private keys and Tokens remain under ignored `.state/`. The platform uses local configuration for administration and provides no remote account-management API. For public deployment, apply your normal reverse-proxy/access boundary and operational hardening.
+
+![CONET operations screen](images/screen.png)
