@@ -95,3 +95,5 @@ The HTTP request accepts `region`, a WGS84 GeoJSON Polygon geometry, and `min_co
 ```
 
 The fixed Job receives `REGION` and a derived `REGION_BBOX`. The envelope narrows imagery tile/window candidates; precise polygon intersection narrows windows further and point-in-polygon tests filter detections. Overlay independently rechecks each point. Exterior and hole boundaries are retained, while hole interiors are excluded. Complete terrain basins and channel topology remain available for entropy and downstream tracing. Only rendered channel geometry is clipped; selection must not truncate scientific context. Results and downloaded metadata retain the original polygon, and both map views draw its actual rings. The local operators use version `1.1`.
+
+The observatory selector fits the initial cone ellipse into the canvas with a small margin. It supports +/− and wheel zoom, a pan mode, fitting the current selection and resetting to the example cone. Zoom and pan change only the view, not the submitted cone. Editing valid coordinates refits the view.
