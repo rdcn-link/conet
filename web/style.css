@@ -7,3 +7,7 @@
 .brand img{width:46px;height:46px;display:block;flex-shrink:0}
 
 .center-volume{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:#718791;font-size:12px}.center-volume strong{font-size:20px;color:#238d94;font-weight:600}
+
+header nav{margin-left:auto}header nav a[href="/screen"]{white-space:nowrap}
+
+.case-art{height:190px;background:#e8f1f4}.case-art img{width:100%;height:100%;object-fit:cover}.case-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr))}.case-card{display:flex;flex-direction:column}.case-body{display:flex;flex-direction:column;flex:1}.case-body p{flex:1}.case-body h3{font-size:19px}.case-body .tags:empty{display:none}

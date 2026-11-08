@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+CONET_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+exec "$CONET_ROOT/target/universal/stage/bin/conet" --root "$CONET_ROOT" "$@"

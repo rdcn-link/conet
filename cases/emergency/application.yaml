@@ -1,0 +1,195 @@
+version: 1
+id: emergency
+title: 灾情应急多中心融合
+description: 融合灾前灾后影像、地形、水文及道路聚落，辅助研判地震或泥石流疑似影响。
+job: job.yaml
+synthetic: true
+data:
+  scope: emergency
+inputs:
+- name: region
+  label: 分析区域
+  widget: polygon
+  required: true
+  coverage_manifest: /bbox_wgs84
+  initial_manifest: /bbox_wgs84
+- name: event
+  label: 事件参数
+  widget: object
+  point_fields:
+  - longitude
+  - latitude
+  coverage_manifest: /bbox_wgs84
+  fields:
+  - name: type
+    label: 事件类型
+    widget: select
+    default: earthquake
+    options:
+    - value: earthquake
+      label: 地震
+    - value: mudslide
+      label: 泥石流
+  - name: time
+    label: 事件时间（带时区）
+    widget: datetime
+    default_manifest: /event_time
+  - name: longitude
+    label: 经度
+    widget: number
+    min: -180
+    max: 180
+    initial_manifest: /default_event/0
+  - name: latitude
+    label: 纬度
+    widget: number
+    min: -85
+    max: 85
+    initial_manifest: /default_event/1
+  - name: magnitude
+    label: 演示震级
+    widget: number
+    default: 6.5
+    min: 3
+    max: 9
+  - name: radius_km
+    label: 关注半径（km）
+    widget: number
+    default: 20
+    min: 1
+    max: 60
+  - name: rainfall_mm
+    label: 累计降雨（mm）
+    widget: number
+    default: 180
+    min: 0
+    max: 600
+- name: simulation
+  label: 数据可用性演示
+  widget: select
+  default: none
+  options:
+  - value: none
+    label: 正常观测
+  - value: missing_imagery
+    label: 遥感缺测
+  - value: stale_hydrology
+    label: 水文观测过期
+- name: change_threshold
+  label: 变化比例阈值
+  widget: number
+  default: 0.15
+  min: 0.01
+  max: 0.9
+variables:
+  REGION:
+    input: region
+  EVENT:
+    input: event
+  SIMULATION:
+    input: simulation
+  CHANGE_THRESHOLD:
+    input: change_threshold
+  TERRAIN_URI:
+    dataset: emergency-terrain
+    item: terrain.bundle
+  IMAGERY_URI:
+    dataset: emergency-imagery
+    item: imagery.bundle
+  HYDROLOGY_URI:
+    dataset: emergency-hydrology
+    item: hydrology.bundle
+  EXPOSURE_URI:
+    dataset: emergency-exposure
+    item: exposure.geojson
+result:
+  decoder: json
+  artifacts:
+  - id: geojson
+    label: 空间成果
+    file: impact.geojson
+    format: json
+    path: /geojson
+  - id: sources
+    label: 来源时效
+    file: sources.json
+    format: json
+    path: /sources
+  - id: csv
+    label: 要素清单 CSV
+    file: affected-assets.csv
+    format: csv
+    path: /geojson/features
+    project: /properties
+    exclude:
+      kind: suspected_area
+    columns:
+    - id
+    - name
+    - kind
+    - assessment
+    - assessment_label
+    - affected_length_m
+    - population
+  summary:
+    suspected_area_km2:
+      path: /summary/suspected_area_km2
+    affected_road_km:
+      path: /summary/affected_road_km
+    affected_settlements:
+      path: /summary/affected_settlements
+    exposed_population:
+      path: /summary/exposed_population
+    affected_facilities:
+      path: /summary/affected_facilities
+    complete:
+      path: /complete
+  views:
+  - type: metrics
+    title: 影响统计
+    items:
+    - path: /summary/suspected_area_km2
+      label: 疑似影响面积 km²
+    - path: /summary/affected_road_km
+      label: 疑似影响道路 km
+    - path: /summary/affected_settlements
+      label: 疑似暴露聚落
+  - type: geojson
+    title: 灾情研判图
+    path: /geojson
+  - type: table
+    title: 数据来源与时效
+    path: /sources
+    columns:
+    - source
+    - status
+    - observed_at
+    - assessment_at
+    - reason
+  - type: table
+    title: 道路聚落与设施
+    path: /geojson/features
+    project: /properties
+    columns:
+    - name
+    - kind
+    - assessment_label
+    - affected_length_m
+    - population
+presentation:
+  theme: amber
+  cover: /assets/emergency-cover.svg
+  tags: ["灾情研判", "多源融合", "空间分析"]
+  step_labels:
+    terrain_data: 读取地形数据
+    terrain_constraints: 提取地形约束
+    imagery_data: 读取遥感影像
+    imagery_change: 识别影像变化
+    hydrology_data: 读取水文数据
+    hydrology_context: 研判水文背景
+    exposure_data: 读取地理空间要素
+    emergency_fusion: 多源融合与影响评估
+  notice: 合成数据演示，分析结果仅用于展示数据协作流程。
+limits:
+  max_queued: 4
+  max_result_bytes: 8388608

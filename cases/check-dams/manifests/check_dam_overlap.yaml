@@ -1,0 +1,82 @@
+name: check_dam_overlap
+version: '1.1'
+description: Synthetic three-center check-dam overlap
+image: xstream/check-dams-demo:1.0
+executor: python
+entrypoint: analysis
+artifact: analysis.zip
+inputs:
+  a_hazards:
+    representations:
+    - bytes
+    formats: []
+  b_candidates:
+    representations:
+    - bytes
+    formats: []
+  c_grids:
+    representations:
+    - bytes
+    formats: []
+parameters:
+  type: object
+  properties:
+    region:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Polygon
+        coordinates:
+          type: array
+          minItems: 1
+          maxItems: 16
+          items:
+            type: array
+            minItems: 4
+            maxItems: 256
+            items:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                type: number
+      required:
+      - type
+      - coordinates
+      additionalProperties: false
+    region_bbox:
+      type: array
+      items:
+        type: number
+      minItems: 4
+      maxItems: 4
+    operation:
+      type: string
+    entropy_bins:
+      type: integer
+      minimum: 2
+      maximum: 32
+    min_slope_ratio:
+      type: number
+    max_slope_ratio:
+      type: number
+    max_entropy:
+      type: number
+    max_downstream_hops:
+      type: integer
+    min_confidence:
+      type: number
+    duplicate_distance_m:
+      type: number
+    bias:
+      type: integer
+  required:
+  - operation
+  - region
+  - region_bbox
+  additionalProperties: false
+icon:
+  path: M3 19L9 5L14 13L18 7L22 19ZM5 17H20
+  color: '#14866b'

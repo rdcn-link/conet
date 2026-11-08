@@ -1,0 +1,3 @@
+window.conetTiandituReady=(function loadTianditu(){return new Promise((resolve,reject)=>{if(window.T?.Map){resolve();return}const script=document.createElement('script');script.src='https://api.tianditu.gov.cn/api?v=4.0&tk=de3b89892ae2abd084521e77b924f5c3';const timer=setTimeout(()=>reject(Error('天地图加载超时，请检查网络或浏览器端 Key 的域名设置')),20000);script.onload=()=>{clearTimeout(timer);window.T?.Map?resolve():reject(Error('天地图 API 不可用，请检查浏览器端 Key'))};script.onerror=()=>{clearTimeout(timer);reject(Error('天地图加载失败，请检查网络和 Key 设置'))};document.head.appendChild(script)})}
+)();
+window.conetTiandituReady.catch(()=>{});

@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-使用 Linux、Python 3.12、Java 17、OpenSSL、Docker 和已构建的 DACP 分发目录。建议至少预留 10 GB 磁盘和约 8 GB 可用内存；模型训练与镜像构建还需要额外临时空间。`manage.py` 使用 `sudo -n` 启动 Docker 和节点进程，需要配置合适的本机管理权限。这是面向内网的演示部署，不包含公众用户账号体系。
+使用 Linux、Java 17、sbt 1.10.7、Python 3.12、OpenSSL、Docker 和已构建的 DACP 分发目录。建议至少预留 10 GB 磁盘和约 8 GB 可用内存；模型训练与镜像构建还需要额外临时空间。`bin/conet` 使用 `sudo -n` 启动 Docker 和节点进程，需要配置合适的本机管理权限。工作空间和共享存储配置见[工作空间](workspaces_zh.md)。
 
 `DACP_HOME` 指向包含以下已暂存程序的 DACP 项目目录：
 
@@ -15,26 +15,27 @@ dacp-union-server/target/universal/stage/bin/dacp-union-server
 dacp-union-server/target/universal/stage/bin/union-admin
 ```
 
-SDK 应与节点使用相同的 DACP 修订版本。节点执行还需要 XStream 开发安装提供的基础镜像 `xstream/operator-python:1.0`。
+构建与节点相同修订版本的 DACP Scala 客户端，并将它及 XStream 依赖发布到本地 Maven/Ivy 仓库。CONET 依赖 `io.github.rdcn-link:dacp-client-scala_2.13:0.1.0` 和 `xstream-execution-api_2.13:0.1.0-SNAPSHOT`。Python 用于科学数据准备、科学测试及仓库发布工具。节点执行还需要 XStream 开发安装提供的基础镜像 `xstream/operator-python:1.0`。
 
 ```bash
 export DACP_HOME=/path/to/dacp-codex
 python3.12 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt "$DACP_HOME/dacp-client"
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
-主机依赖使用 PyArrow 23.0.1，与所安装的 DACP Python 客户端一致。算子容器的锁定依赖单独使用 PyArrow 26.0.1。不要把算子运行环境的依赖锁文件安装到主机 SDK 环境中。
+科学准备及测试依赖使用 PyArrow 23.0.1，Web 服务使用 Scala SDK，不依赖 Python DACP SDK。算子容器的锁定依赖单独使用 PyArrow 26.0.1。不要把算子运行环境的依赖锁文件安装到科学准备环境中。
 
 ## 生成两个 GB 级数据集
 
 在 CONET 项目根目录运行。生成器会拒绝已存在的输出目录；应保留已有数据或选择新目录，不要覆盖。
 
 ```bash
-mkdir -p .state/cases/check-dams .state/cases/observatory
+mkdir -p .state/cases/check-dams .state/cases/observatory .state/cases/emergency
 .venv/bin/python cases/check-dams/generate_data.py \
   .state/cases/check-dams/data --tile-size 1700 --grid 4 --resolution 5
 .venv/bin/python cases/observatory/generate_data.py \
   .state/cases/observatory/data --rows 9000000 --chunk-rows 500000
+.venv/bin/python cases/emergency/generate_data.py .state/cases/emergency/data
 ```
 
 第一个命令生成 16 个空间瓦片，以 5 米分辨率覆盖约 34 × 34 千米，总量 **1,018,060,800 字节**。第二个命令生成**每个天文台 900 万行**、总计 2700 万行，每个波段分为 18 个 FITS 分片，总量约 972 MB。生成器使用确定性的合成随机种子。输入 bundle 包含未压缩的 TAR 成员，采用 `.bundle` 扩展名，以字节流而非压缩包目录视图发布。
@@ -65,18 +66,29 @@ python3.12 -m venv .state/training-venv
 
 脚本将精确版本的 wheel 下载到被忽略的 `cases/*/runtime/wheels/`，再构建 `xstream/check-dams-demo:1.0` 和 `xstream/observatory-demo:1.0`。镜像构建阶段离线安装依赖；作业运行时无需从外网下载模型或软件包。
 
+## 构建应用
+
+```bash
+sbt -Dsbt.override.build.repos=true -Dsbt.repository.config=project/repositories test stage
+.venv/bin/python cases/check-dams/visuals.py .state/cases/check-dams
+bin/conet build-operators
+```
+
+`target/universal/stage/` 是 Scala 分发目录，`bin/conet` 根据项目目录定位它。预览命令一次性生成具有地理参考的栅格预览，并复用未变化的图片。`build-operators` 打包带版本的 `cases/*/manifests/*.yaml` 及科学源码，不导入 Python 平台代码。
+
 ## 配置与启停
 
-`conet.yaml` 定义门户地址和端口、案例标识与目录、回环后端端口，以及中心和数据集说明。每个数据集必须有标题和描述。现有案例使用中心标识 `a`、`b`、`c`，数据目录名和源元数据也遵循该约定。案例依据数据集描述中的 `case` 和 `center` 路由，不依赖 Union 重命名后的数据集名称。
+`conet.yaml` 定义门户地址和端口、案例标识与目录、应用配置，以及中心和数据集说明。每个数据集必须有标题和描述。现有案例使用中心标识 `a`、`b`、`c`，数据目录名和源元数据也遵循该约定。案例依据数据集描述中的 `case` 和 `center` 路由，不依赖 Union 重命名后的数据集名称。
 
 ```bash
 export DACP_HOME=/path/to/dacp-codex
-.venv/bin/python manage.py up
-.venv/bin/python manage.py status
-.venv/bin/python manage.py down
+bin/conet up
+bin/conet status
+bin/conet restart-web  # 保留节点、Union、输入数据和结果
+bin/conet down
 ```
 
-启动会在 `.state/network/` 创建持久 CA、各成员及 Union 的独立证书、Union 授权和 runner 账号。七个节点和 Union 使用本机可用端口，从现有案例清单和分析参数生成四个小型参考数据集，等待十个数据集全部可见后，启动两个回环案例后端和 8870 端口的门户。节点和 Union 看板在动态端口上监听所有网卡，地址写入 `.state/network/connection.json`。门户应仅向可信网络开放，或置于已有访问边界之后。门户不会把服务 Token 或私钥发给浏览器。
+启动会在 `.state/network/` 创建持久 CA、各成员及 Union 的独立证书、Union 授权和 runner 账号。七个节点和 Union 使用本机可用端口，从现有案例清单和分析参数生成四个小型参考数据集，等待科学数据集全部可见后，启动一个 Scala JVM，在 8870 端口提供门户和 `/apps/<id>/` 应用。共享中心提供个人空间与数据产品目录，加入同一个 Union；网络共包含八个成员。节点和 Union 看板在动态端口上监听所有网卡，地址写入 `.state/network/connection.json`。门户应仅向可信网络开放，或置于已有访问边界之后。门户不会把服务 Token 或私钥发给浏览器。
 
 进程 PID 和应用启动时间均会记录。停止时检查进程归属，只向所管理的进程组发信号；启动失败会回收其已启动进程。科学输入数据和完成的结果在停止后保留。日志位于 `.state/*.log` 和 `.state/network/*.log`。
 
@@ -91,4 +103,8 @@ export DACP_HOME=/path/to/dacp-codex
   --token-file /secure/submitter.token
 ```
 
-非本机访问必须使用 HTTPS。管理员权限用于注册两个不可变的科学执行环境，提交者 Token 用于上传七个仅源码算子。仓库使用已有 Python/Arrow 2.0 构建工具将源码编译为算子包。检测模型是不可变的运行环境资源，不放进源码包。运行环境归档可能包含训练权重，但不得放进 Git。脚本**不会**审批或指定可信度；构建成功后仍须管理员审核。CONET 当前执行管理员安装的本地版本，与仓库审批状态独立。
+非本机访问必须使用 HTTPS。管理员权限用于注册两个不可变的科学执行环境，提交者 Token 用于上传十一个仅源码算子。仓库使用已有 Python/Arrow 2.0 构建工具将源码编译为算子包。检测模型是不可变的运行环境资源，不放进源码包。运行环境归档可能包含训练权重，但不得放进 Git。脚本**不会**审批或指定可信度；构建成功后仍须管理员审核。CONET 当前执行管理员安装的本地版本，与仓库审批状态独立。
+
+灾情案例生成约 1.004 GB 输入，复用淤地坝的地理处理运行环境，无需训练新模型。浏览器地图配置见[案例地图](maps_zh.md)。
+
+运行网络包含八个 Node 成员：原有七个科学数据中心及一个共享托管中心。Union 负责协调，不计入 Node 数量。共享中心还承载临时应用输入，见[文件输入](file-inputs_zh.md)。

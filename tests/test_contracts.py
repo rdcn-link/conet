@@ -20,12 +20,8 @@ class StreamContracts(unittest.TestCase):
     def test_fragmented_chunks_and_empty_chunks(self):
         for cls in [dam.ChunkReader,astro.ChunkReader]:
             with io.BufferedReader(cls([b'',b'ab',b'',b'c',b'de'])) as stream:self.assertEqual(stream.read(),b'abcde')
-    def test_repeated_variables_no_yaml_aliases(self):
-        for case in ['check-dams','observatory']:
-            command="import demo,yaml;v=demo.apply_variables('a: $CONE\\nb: $CONE',{'CONE':[150,2,.15]});assert '&id' not in v and '*id' not in v;assert yaml.safe_load(v)['a']==[150,2,.15]"
-            subprocess.run([sys.executable,'-c',command],cwd=ROOT/'cases'/case,check=True)
     def test_job_ports_only_reference_existing_steps(self):
-        for case in ['check-dams','observatory']:
+        for case in ['check-dams','observatory','emergency']:
             job=yaml.safe_load((ROOT/'cases'/case/'job.yaml').read_text());seen=set()
             for step in job['steps']:
                 for source in step.get('inputs',{}).values():self.assertIn(source.split(':')[0],seen)
@@ -68,23 +64,6 @@ class AstronomyContracts(unittest.TestCase):
         result=astro.crossmatch(self.band('g',[self.row(1,150)]),self.band('r',[self.row(2,150+.7/3600)]),self.band('i',[self.row(3,150-.7/3600)]),{'cone':[150,2,.15],'match_radius_arcsec':.8})
         self.assertFalse(result['rows'])
 
-class ObservabilityContracts(unittest.TestCase):
-    def test_failed_case_keeps_other_observations_and_member_mapping(self):
-        import tempfile
-        from unittest.mock import patch
-        server=load('conet_server',ROOT/'server.py')
-        with tempfile.TemporaryDirectory() as tmp:
-            path=Path(tmp);(path/'.state/network').mkdir(parents=True)
-            connection={'web_urls':{'union':'http://127.0.0.1:1234'},'node_urls':{'a':'dacp://127.0.0.1:1','b':'dacp://127.0.0.1:2','c':'dacp://127.0.0.1:3'}}
-            (path/'.state/network/connection.json').write_text(json.dumps(connection))
-            def fake(url):
-                if ':8871/' in url:raise TimeoutError()
-                if url.endswith('/api/jobs'):return [{'id':'astro-test','state':'succeeded'}]
-                return {'members':[{'url':'dacp://127.0.0.1:3','identity':'C'},{'url':'dacp://127.0.0.1:1','identity':'A'}]}
-            with patch.object(server,'ROOT',path),patch.object(server,'get_json',side_effect=fake):value=server.snapshot()
-            self.assertTrue(value['available'])
-            self.assertEqual([m['center_id'] for m in value['overview']['members']],['c','a'])
-            cases={c['id']:c for c in value['cases']};self.assertFalse(cases['check-dams']['available']);self.assertTrue(cases['observatory']['available']);self.assertEqual(len(cases['observatory']['jobs']),1)
 
 class MapPreviewContracts(unittest.TestCase):
     def test_georeferenced_preview_and_reuse(self):

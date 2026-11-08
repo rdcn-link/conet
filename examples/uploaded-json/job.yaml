@@ -1,0 +1,7 @@
+name: 读取上传文件
+steps:
+  - id: read_input
+    operator: read_item@1.0
+    params: {uri: $INPUT_URI, view: bytes}
+    inputs: {}
+outputs: {result: read_input}

@@ -1,0 +1,95 @@
+version: 1
+id: check-dams
+title: 山洪沟道淤地坝识别
+description: 融合地形、遥感影像与沟道栅格，筛选易发山洪沟道中的淤地坝。
+job: job.yaml
+synthetic: true
+data:
+  scope: check-dams
+inputs:
+- name: region
+  label: 分析区域
+  widget: polygon
+  required: true
+  coverage_manifest: /bbox_wgs84
+  initial_manifest: /bbox_wgs84
+- name: min_confidence
+  label: 最低识别置信度
+  widget: number
+  default: 0.35
+  min: 0.05
+  max: 0.95
+variables:
+  REGION:
+    input: region
+  REGION_BBOX:
+    bbox: region
+  MIN_CONFIDENCE:
+    input: min_confidence
+  TERRAIN_URI:
+    dataset: terrain
+    item: terrain.bundle
+  IMAGERY_URI:
+    dataset: imagery
+    item: imagery.bundle
+  CHANNEL_GRIDS_URI:
+    dataset: channels
+    item: channels.bundle
+result:
+  decoder: svg-metadata
+  artifacts:
+  - id: map
+    label: 分布图 SVG
+    file: distribution.svg
+    format: raw
+  - id: geojson
+    label: 空间数据
+    file: sites.geojson
+    format: json
+    path: /geojson
+  summary:
+    valid_sites:
+      path: /features
+      operation: count
+    rejected:
+      path: /rejections
+      operation: count
+  views:
+  - type: metrics
+    title: 分析统计
+    items:
+    - path: /candidate_count
+      label: 候选点
+    - path: /windows_inferred
+      label: 识别窗口数
+  - type: geojson
+    title: 淤地坝分布
+    path: /geojson
+  - type: table
+    title: 有效候选点
+    path: /features
+    project: /properties
+    columns:
+    - point_id
+    - HydroID
+    - confidence
+    - longitude
+    - latitude
+    - distance_to_channel_m
+presentation:
+  theme: forest
+  cover: /assets/check-dams-cover.svg
+  tags: ["空间分析", "遥感识别", "跨中心协作"]
+  step_labels:
+    terrain_data: 读取地形数据
+    terrain_metrics: 计算比降与信息熵
+    susceptible_channels: 提取易发沟道
+    imagery: 读取遥感影像
+    candidate_sites: 识别坝体候选
+    channel_grids: 读取沟道栅格
+    spatial_overlap: 空间叠加与去伪
+    distribution_map: 生成分布图
+  notice: 合成数据演示，分析结果仅用于展示数据协作流程。
+limits:
+  max_queued: 4
+  max_result_bytes: 8388608

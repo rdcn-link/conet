@@ -1,0 +1,98 @@
+name: emergency_fusion
+version: '1.0'
+description: 'Synthetic emergency screening: fusion'
+image: xstream/check-dams-demo:1.0
+executor: python
+entrypoint: analysis
+artifact: analysis.zip
+inputs:
+  terrain:
+    representations:
+    - bytes
+    formats: []
+  imagery:
+    representations:
+    - bytes
+    formats: []
+  hydrology:
+    representations:
+    - bytes
+    formats: []
+  exposure:
+    representations:
+    - bytes
+    formats: []
+parameters:
+  type: object
+  properties:
+    operation:
+      type: string
+    region:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Polygon
+        coordinates:
+          type: array
+          items:
+            type: array
+            items:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+            minItems: 4
+            maxItems: 256
+          minItems: 1
+          maxItems: 16
+      required:
+      - type
+      - coordinates
+      additionalProperties: false
+    event:
+      type: object
+      properties:
+        type:
+          type: string
+        time:
+          type: string
+        longitude:
+          type: number
+        latitude:
+          type: number
+        magnitude:
+          type: number
+        radius_km:
+          type: number
+        rainfall_mm:
+          type: number
+      required:
+      - type
+      - time
+      - longitude
+      - latitude
+      - magnitude
+      - radius_km
+      - rainfall_mm
+      additionalProperties: false
+    simulation:
+      type: string
+      enum:
+      - none
+      - missing_imagery
+      - stale_hydrology
+    change_threshold:
+      type: number
+      minimum: 0.01
+      maximum: 0.9
+  required:
+  - operation
+  - region
+  - event
+  additionalProperties: false
+icon:
+  path: M12 3L22 20H2ZM12 8V13M12 16V17
+  color: '#dc8056'

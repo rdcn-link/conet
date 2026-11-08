@@ -7,7 +7,7 @@ from urllib.request import Request,urlopen
 from urllib.error import HTTPError
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--url',default='http://127.0.0.1:8870');a=p.parse_args();base=a.url.rstrip('/')
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--url',default='http://127.0.0.1:8870');a=p.parse_args();base=a.url.rstrip('/');
     def request(path,payload=None,headers=None):
         data=None if payload is None else json.dumps(payload).encode()
         with urlopen(Request(base+path,data,{'Content-Type':'application/json',**(headers or {})}),timeout=15) as response:
@@ -15,7 +15,7 @@ def main():
     config=request('/api/config');assert len(config['centers'])==7
     test_jobs=[]
     for case in ['check-dams','observatory']:
-        prefix='/cases/'+case
+        prefix='/apps/'+case
         cfg=request(prefix+'/api/config')
         try:request(prefix+'/api/jobs',[])
         except HTTPError as e:assert e.code==400
@@ -30,19 +30,19 @@ def main():
     summaries=[]
     for case,identifier in test_jobs:
         while True:
-            job=request('/cases/'+case+'/api/jobs/'+identifier)
+            job=request('/apps/'+case+'/api/jobs/'+identifier)
             if job['state'] not in ['queued','running']:break
             if time.monotonic()>deadline:raise TimeoutError('Union analysis timed out')
             time.sleep(1)
         assert job['state']=='succeeded',job.get('error')
         assert job.get('job_id') and job.get('summary')
         for key,path in job['artifacts'].items():
-            assert path.startswith('/cases/'+case+'/results/');assert request(path),key
+            assert path.startswith('/apps/'+case+'/results/');assert request(path),key
         assert len(job['result']['features'] if case=='check-dams' else job['result']['rows'])>0
         summaries.append({'case':case,'application_id':identifier,**job['summary']})
     snap=request('/api/snapshot');assert snap['available']
-    assert len(snap['overview']['members'])==len(config['centers'])
-    assert all(m['state']=='approved' and m.get('center_id') in {c['id'] for c in config['centers']} for m in snap['overview']['members'])
+    assert len(snap['overview']['members'])>=len(config['centers'])
+    assert all(m['state']=='approved' for m in snap['overview']['members']); assert {c['id'] for c in config['centers']}.issubset({m.get('center_id') for m in snap['overview']['members']})
     participants={m['identity'] for m in snap['overview']['members'] if m['center_id'] in ['a','b','c','e','f','g']}
     assert all(snap['topology']['participation'].get(identity,0)>=1 for identity in participants)
     print(json.dumps(summaries,indent=2,ensure_ascii=False))

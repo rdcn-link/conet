@@ -6,8 +6,8 @@ import subprocess
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--case',choices=['all','check-dams','observatory'],default='all');a=p.parse_args()
-    for case in ['check-dams','observatory'] if a.case=='all' else [a.case]:
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--case',choices=['all','check-dams','observatory','emergency'],default='all');a=p.parse_args()
+    for case in ['check-dams','observatory'] if a.case=='all' else ['check-dams' if a.case=='emergency' else a.case]:
         root=ROOT/'cases'/case;wheels=root/'runtime/wheels';wheels.mkdir(parents=True,exist_ok=True)
         command=[sys.executable,'-m','pip','download','--only-binary=:all:','--no-deps','--dest',str(wheels)]
         if case=='check-dams':

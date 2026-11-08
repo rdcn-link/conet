@@ -5,3 +5,11 @@ __pycache__/
 cases/*/runtime/wheels/
 cases/*/runtime/sdk/
 cases/*/runtime/model/
+target/
+project/target/
+project/project/
+.bsp/
+.metals/
+
+.dacp-*/
+.operator-cache/

@@ -1,0 +1,44 @@
+version: 1
+id: uploaded-csv
+title: CSV 文件在线分析
+description: 上传 CSV 文件，通过共享数据中心与 Union 读取，预览表格、查看记录及字段统计，并下载分析成果。
+job: job.yaml
+synthetic: false
+inputs:
+  - name: source
+    label: 选择 CSV 文件
+    widget: file
+    required: true
+    extensions: [.csv]
+    max_bytes: 16777216
+    view: bytes
+variables:
+  INPUT_URI: {input: source}
+result:
+  decoder: csv-table
+  artifacts:
+    - {id: rows, label: 数据表 CSV, file: rows.csv, format: csv, path: /rows, columns_path: /columns}
+    - {id: statistics, label: 字段统计 JSON, file: statistics.json, format: json, path: /column_statistics}
+  summary:
+    rows: {path: /row_count}
+    columns: {path: /column_count}
+  views:
+    - type: metrics
+      title: 文件概览
+      items:
+        - {label: 记录数, path: /row_count}
+        - {label: 字段数, path: /column_count}
+    - {type: table, title: 数据预览, path: /rows}
+    - type: table
+      title: 字段统计
+      path: /column_statistics
+      columns: [name, nonempty_count, empty_count, numeric_count, min, max]
+      column_labels: {name: 字段, nonempty_count: 非空值, empty_count: 空值, numeric_count: 数值个数, min: 最小值, max: 最大值}
+presentation:
+  theme: coast
+  cover: /assets/app-cover.svg
+  tags: [文件上传, CSV, 数据统计]
+  notice: 支持 UTF-8 CSV（可含 BOM），首行为唯一字段名。最多 16 MiB、100000 条记录、256 个字段。表格预览前 200 行；字段统计由服务端成果插件计算，不进行分布式聚合。
+limits:
+  max_queued: 4
+  max_result_bytes: 16777216

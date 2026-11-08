@@ -38,3 +38,10 @@ def prepare(state):
         for band in range(3):reproject(mosaic[band],projected[band],src_transform=transform,src_crs='EPSG:4326',dst_transform=projected_transform,dst_crs='EPSG:3857',resampling=Resampling.bilinear)
         Image.fromarray(np.moveaxis(projected,0,2)).save(output/(kind+'-mercator.png'),optimize=True)
     stamp.write_text(signature)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser=argparse.ArgumentParser(description='Generate georeferenced case preview images')
+    parser.add_argument('state',type=Path)
+    prepare(parser.parse_args().state)

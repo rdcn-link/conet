@@ -1,0 +1,31 @@
+version: 1
+id: uploaded-json
+title: 上传文件分析
+description: 上传包含 rows 数组的 JSON 文件，通过共享节点读取并展示结果。
+job: job.yaml
+synthetic: false
+inputs:
+  - name: source
+    label: 输入 JSON 文件
+    widget: file
+    required: true
+    extensions: [.json]
+    max_bytes: 16777216
+    view: bytes
+variables:
+  INPUT_URI: {input: source}
+result:
+  decoder: json
+  artifacts:
+    - {id: rows, file: rows.json, format: json, path: /rows}
+  summary:
+    rows: {path: /rows, operation: count}
+  views:
+    - {type: table, title: 上传的数据, path: /rows}
+presentation:
+  theme: rose
+  cover: /assets/app-cover.svg
+  tags: [文件上传, 共享节点]
+limits:
+  max_queued: 4
+  max_result_bytes: 16777216

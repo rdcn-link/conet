@@ -7,13 +7,16 @@ cases:
   title_en: Check-dam identification
   description: 融合地形、遥感影像与沟道栅格，筛选易发山洪沟道中的淤地坝。
   directory: cases/check-dams
-  port: 8871
 - id: observatory
   title: 三天文台多波段交叉匹配
   title_en: Three-observatory crossmatching
   description: 联合 g、r、i 三波段星表，开展球面交叉匹配与颜色分析。
   directory: cases/observatory
-  port: 8872
+- id: emergency
+  title: 灾情应急多中心融合
+  title_en: Multi-center emergency assessment
+  description: 融合灾前灾后影像、地形、水文及道路聚落，辅助研判地震或泥石流疑似影响。
+  directory: cases/emergency
 centers:
 - id: a
   title: 地形地貌数据中心
@@ -26,6 +29,10 @@ centers:
     name: terrain
     title: 地形与沟道
     description: 合成高程、集水区与沟道拓扑
+  - case: emergency
+    name: emergency-terrain
+    title: 应急地形与坡度
+    description: 合成高程与坡度，10 米栅格
 - id: b
   title: 遥感观测数据中心
   location:
@@ -37,6 +44,10 @@ centers:
     name: imagery
     title: 遥感影像
     description: 合成 RGB 影像与地理控制点
+  - case: emergency
+    name: emergency-imagery
+    title: 灾前灾后遥感影像
+    description: 合成绿色与近红外双波段灾前灾后观测
 - id: c
   title: 水文流域数据中心
   location:
@@ -48,6 +59,10 @@ centers:
     name: channels
     title: 沟道栅格
     description: 合成 HydroID 栅格
+  - case: emergency
+    name: emergency-hydrology
+    title: 应急降雨与水系
+    description: 合成累计降雨及沟道距离栅格
 - id: d
   title: 地理空间数据中心
   location:
@@ -65,6 +80,10 @@ centers:
     directory: references/f
     title: 地学分析方法参数
     description: 演示案例使用的沟道筛选与空间叠加参数
+  - case: emergency
+    name: emergency-exposure
+    title: 道路聚落与应急设施
+    description: 合成道路、聚落、医院和避难场所
 - id: e
   title: 华中天文台
   location:
@@ -111,3 +130,19 @@ centers:
     directory: references/g
     title: 天区覆盖与测光参考
     description: 合成星表的天区覆盖范围与坐标测光体系说明
+
+appbuilder:
+  designer_url: http://10.0.82.103:8840/
+
+  chat:
+    codex_config: /home/cnic/.codex/config.toml
+
+  products:
+    directory: .state/hosting/products
+    retention_days: 30
+
+hosting:
+  enabled: true
+  directory: .state/hosting
+  quota_bytes: 1073741824
+  max_upload_bytes: 16777216

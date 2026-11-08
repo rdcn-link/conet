@@ -72,15 +72,13 @@ The Web interface displays a sky plot, color–color plot, hover inspection and 
 
 ## Interactive visualization
 
-The check-dam Web map displays offline georeferenced previews (WGS84 for selection, Web Mercator for result maps) derived from the actual synthetic RGB and DEM inputs. Switch imagery/terrain, zoom with the wheel or buttons, drag to pan, toggle channels/candidates, click a candidate or table row for details, and export the current map as PNG. The region selector also displays the imagery preview. Previews are display assets under `.state/cases/check-dams/visuals/`, generated once at application startup and invalidated when input file size/timestamp changes. They do not change analysis, execution or placement. No external tile server is needed. Synthetic plateaus and motifs do not represent real terrain or satellite imagery; the downloadable SVG remains a schematic analysis artifact.
+App Builder renders configured map, table and download views for the check-dam results. Scientific operators and fixed Job definitions are shared with the other applications; there is no separate custom case Web frontend.
 
 Astronomy plots use the actual matched sources on a dark coordinate grid. Star size reflects the synthetic g magnitude, and selecting a source in either chart or the table highlights it in both charts and displays photometry and matching details. The selection map displays matched-source positions after completion. No fabricated survey background is added.
 
-### Public geographic basemap
+### Tianditu geographic basemaps
 
-The check-dam result map additionally offers an OpenStreetMap layer covering the selected Loess Plateau study region. This is a **real geographic background**; channel geometry, dam candidates and scientific results remain synthetic. The layer reads only visible standard raster tiles from `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, maintains a bounded in-memory cache and does not prefetch or package tiles for offline use. Attribution links to [OpenStreetMap copyright](https://www.openstreetmap.org/copyright) and is included in PNG exports. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/). Public tiles require browser Internet access; the locally generated synthetic imagery/terrain layers remain usable without it. The public layer uses a Mercator projection for map coordinates, panning and anchored zoom.
-
-The region selector uses a real OpenStreetMap basemap, with synthetic channels and the selection rectangle overlaid inside the available data footprint. Tiles are fetched on demand through the case service and cached locally for seven days; no region is pre-downloaded. Attribution remains visible. An explicit message is shown if the external map service cannot be reached.
+Geographic maps in all three cases use the Tianditu browser SDK. Check-dam selection/results, emergency selection/results and observatory locations distinguish real geographic backgrounds from synthetic scientific features. Astronomy sky plots retain ICRS celestial coordinates. See [case maps](maps.md) for configuration and export behavior.
 
 The selector initially selects and displays an illustrative Yellow River regional rectangle (95–120°E, 32–42°N), not an authoritative basin boundary. Drag in pan mode, use the wheel or +/− to zoom, double-click to zoom in, or switch to box selection. The data-coverage button selects and fits the available data footprint. Analysis uses only the intersection with the existing synthetic dataset; selecting a larger region does not add data.
 
@@ -97,3 +95,5 @@ The HTTP request accepts `region`, a WGS84 GeoJSON Polygon geometry, and `min_co
 The fixed Job receives `REGION` and a derived `REGION_BBOX`. The envelope narrows imagery tile/window candidates; precise polygon intersection narrows windows further and point-in-polygon tests filter detections. Overlay independently rechecks each point. Exterior and hole boundaries are retained, while hole interiors are excluded. Complete terrain basins and channel topology remain available for entropy and downstream tracing. Only rendered channel geometry is clipped; selection must not truncate scientific context. Results and downloaded metadata retain the original polygon, and both map views draw its actual rings. The local operators use version `1.1`.
 
 The observatory selector fits the initial cone ellipse into the canvas with a small margin. It supports +/− and wheel zoom, a pan mode, fitting the current selection and resetting to the example cone. Zoom and pan change only the view, not the submitted cone. Editing valid coordinates refits the view.
+
+Application input validation, variable bindings, execution, results and usage counters are supplied by [App Builder](appbuilder.md). Each case declares its behavior in `application.yaml` and its graph in `job.yaml`.

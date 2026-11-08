@@ -1,0 +1,36 @@
+name: 灾情应急多中心数据融合与影响评估
+steps:
+  - id: terrain_data
+    operator: read_item@1.0
+    inputs: {}
+    params: {uri: $TERRAIN_URI, view: bytes}
+  - id: terrain_constraints
+    operator: emergency_terrain@1.0
+    inputs: {source: terrain_data}
+    params: {operation: terrain, region: $REGION, event: $EVENT, simulation: $SIMULATION}
+  - id: imagery_data
+    operator: read_item@1.0
+    inputs: {}
+    params: {uri: $IMAGERY_URI, view: bytes}
+  - id: imagery_change
+    operator: emergency_imagery@1.0
+    inputs: {source: imagery_data}
+    params: {operation: imagery, region: $REGION, event: $EVENT, simulation: $SIMULATION}
+  - id: hydrology_data
+    operator: read_item@1.0
+    inputs: {}
+    params: {uri: $HYDROLOGY_URI, view: bytes}
+  - id: hydrology_context
+    operator: emergency_hydrology@1.0
+    inputs: {source: hydrology_data}
+    params: {operation: hydrology, region: $REGION, event: $EVENT, simulation: $SIMULATION}
+  - id: exposure_data
+    operator: read_item@1.0
+    inputs: {}
+    params: {uri: $EXPOSURE_URI, view: bytes}
+  - id: emergency_fusion
+    operator: emergency_fusion@1.0
+    inputs: {terrain: terrain_constraints, imagery: imagery_change, hydrology: hydrology_context, exposure: exposure_data}
+    params: {operation: fusion, region: $REGION, event: $EVENT, simulation: $SIMULATION, change_threshold: $CHANGE_THRESHOLD}
+outputs:
+  result: emergency_fusion

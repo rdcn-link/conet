@@ -1,0 +1,120 @@
+version: 1
+id: observatory
+title: 三天文台多波段星表交叉匹配与颜色分析
+description: 联合 g、r、i 三波段星表，开展球面交叉匹配与颜色分析。
+job: job.yaml
+synthetic: true
+data:
+  scope: observatory
+inputs:
+- name: cone
+  label: 观测天区（ICRS）
+  widget: cone
+  initial_manifest: /default_cone
+  min_radius: 0.001
+  max_radius: 1
+- name: match_radius_arcsec
+  label: 匹配半径（角秒）
+  widget: number
+  default: 0.8
+  min: 0.05
+  max: 3
+- name: min_snr
+  label: 最低信噪比
+  widget: number
+  default: 5
+  min: 1
+  max: 100
+variables:
+  CONE:
+    input: cone
+  MATCH_RADIUS_ARCSEC:
+    input: match_radius_arcsec
+  MIN_SNR:
+    input: min_snr
+  G_CATALOG_URI:
+    dataset: g-band
+    item: catalog.bundle
+  R_CATALOG_URI:
+    dataset: r-band
+    item: catalog.bundle
+  I_CATALOG_URI:
+    dataset: i-band
+    item: catalog.bundle
+result:
+  decoder: json
+  artifacts:
+  - id: csv
+    label: 匹配星表 CSV
+    file: matches.csv
+    format: csv
+    path: /rows
+    columns:
+    - source_id
+    - ra
+    - dec
+    - g
+    - r
+    - i
+    - g_r
+    - r_i
+    - g_r_error
+    - r_i_error
+    - gr_separation_arcsec
+    - gi_separation_arcsec
+    - class
+  summary:
+    matched_sources:
+      path: /rows
+      operation: count
+  views:
+  - type: metrics
+    title: 扫描与筛选
+    items:
+    - path: /scanned_rows
+      label: 扫描行数
+    - path: /band_counts/g
+      label: g 波段
+    - path: /band_counts/r
+      label: r 波段
+    - path: /band_counts/i
+      label: i 波段
+  - type: scatter
+    title: 天区匹配（ICRS）
+    path: /rows
+    x: ra
+    y: dec
+    reverse_x: true
+  - type: scatter
+    title: 颜色－颜色图
+    path: /rows
+    x: g_r
+    y: r_i
+  - type: table
+    title: 匹配星表
+    path: /rows
+    columns:
+    - source_id
+    - ra
+    - dec
+    - g_r
+    - r_i
+    - g_r_error
+    - r_i_error
+    - class
+presentation:
+  theme: indigo
+  cover: /assets/observatory-cover.svg
+  tags: ["多波段星表", "颜色分析", "跨天文台"]
+  step_labels:
+    g_catalog: 读取 g 波段星表
+    select_g: 筛选 g 波段
+    r_catalog: 读取 r 波段星表
+    select_r: 筛选 r 波段
+    i_catalog: 读取 i 波段星表
+    select_i: 筛选 i 波段
+    colors: 多波段匹配与颜色分析
+  notice: 合成数据演示，分析结果仅用于展示数据协作流程。
+limits:
+  max_queued: 4
+  max_result_bytes: 8388608

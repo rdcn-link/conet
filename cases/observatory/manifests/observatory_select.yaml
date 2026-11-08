@@ -1,0 +1,34 @@
+name: observatory_select
+version: '1.0'
+description: Synthetic three-observatory select
+image: xstream/observatory-demo:1.0
+executor: python
+entrypoint: analysis
+artifact: analysis.zip
+inputs:
+  source:
+    representations:
+    - bytes
+    formats: []
+parameters:
+  type: object
+  properties:
+    cone:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+    operation:
+      type: string
+    min_snr:
+      type: number
+    match_radius_arcsec:
+      type: number
+  required:
+  - operation
+  - cone
+  additionalProperties: false
+icon:
+  path: M12 2L14 9L22 12L14 15L12 22L10 15L2 12L10 9Z
+  color: '#6653b1'

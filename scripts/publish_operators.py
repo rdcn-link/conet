@@ -47,12 +47,14 @@ def main():
     model=ROOT/'.state/cases/check-dams/model/model.pt'
     if not model.is_file():raise ValueError('Train the synthetic check-dam model before publishing')
     image='xstream/conet-check-dams:1.0'
-    dockerfile=WORK/'Dockerfile.model';dockerfile.write_text('FROM xstream/check-dams-demo:1.0\nCOPY model.pt /opt/models/check-dam.pt\n')
+    model_context=WORK/'model-runtime';model_context.mkdir(exist_ok=True)
+    dockerfile=model_context/'Dockerfile';dockerfile.write_text('FROM xstream/check-dams-demo:1.0\nCOPY model.pt /opt/models/check-dam.pt\n')
     import shutil
-    shutil.copyfile(model,WORK/'model.pt')
-    subprocess.run(['sudo','-n','docker','build','-t',image,'-f',str(dockerfile),str(WORK)],check=True)
+    shutil.copyfile(model,model_context/'model.pt')
+    subprocess.run(['sudo','-n','docker','build','-t',image,'-f',str(dockerfile),str(model_context)],check=True)
+    subprocess.run([str(ROOT/'bin/conet'),'build-operators'],cwd=ROOT,check=True)
     report=[]
-    for case,image,runtime_name in [('check-dams',image,'conet-geospatial'),('observatory','xstream/observatory-demo:1.0','conet-astronomy')]:
+    for case,image,runtime_name in [('check-dams',image,'conet-geospatial'),('observatory','xstream/observatory-demo:1.0','conet-astronomy'),('emergency',image,'conet-geospatial')]:
         runtime=next((r for r in runtimes if r['name']==runtime_name and r['version']=='1.0'),None)
         if runtime is None:
             archive=WORK/(runtime_name+'.tar.gz')
@@ -65,8 +67,6 @@ def main():
             runtime={'name':runtime_name,'version':'1.0','description':'CONET synthetic science case environment; offline execution','image':identifier,'archive':descriptor,'executors':['python'],'dependencies':{'python':'3.12','pyarrow':'26.0.1','synthetic_demo':'true'},'build':builder}
             request('/api/admin/runtimes','POST',runtime)
         # Build versioned local manifests to keep the public/source declarations identical.
-        env=dict(os.environ,CONET_CASE_STATE=str(ROOT/'.state/cases'/case))
-        subprocess.run([sys.executable,'-c','import demo;demo.build_operators()'],cwd=ROOT/'cases'/case,env=env,check=True)
         source=WORK/(case+'-sources.zip')
         with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED) as archive:
             for file in sorted((ROOT/'cases'/case/'operator').glob('*.py')):archive.write(file,'src/'+file.name)
