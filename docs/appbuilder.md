@@ -1,5 +1,7 @@
 # Configuration-driven applications
 
+Published applications are listed on the **Application services** page (`/services/`), accessible from the primary navigation. The homepage focuses on the collaboration network and data centers.
+
 [中文](appbuilder_zh.md) · [Home](../README.md)
 
 CONET App Builder publishes analysis applications from an application definition and a fixed XStream Job. Published forms can be viewed anonymously; authoring and execution require no login. Union credentials and network endpoints are supplied by the CONET deployment; they are never entered in the browser.
@@ -186,7 +188,7 @@ The restart command updates only the portal and application HTTP services. It pr
 
 See [Publish and share analysis products](products.md) for result descriptions, multi-party attribution and permissions, independent result pages, storage, expiration and revocation.
 
-[Accounts, personal spaces and shared hosting](workspaces.md)
+[Workspace and shared hosting](workspaces.md)
 
 ## Application delivery and file inputs
 
@@ -199,3 +201,23 @@ Choose a theme from the five miniature page previews in the **应用信息** tab
 ## Published page presentation
 
 Application pages use the configured cover and tags in a compact introduction, followed by inputs, execution status and results. On larger screens, polygon selection and parameters appear side by side. Themes apply to headings, form accents, status surfaces and downloads. Results stay empty until an analysis is submitted or a specific existing run is opened. Pages are independently shareable and do not include the authoring navigation.
+
+## Backgrounds and suggested appearance
+
+In **应用信息**, edit the title, description and tags to see a suggested theme, background and thumbnail. Suggestions match subject keywords and input capabilities against bundled visual presets; they do not send descriptions to a model or generate photos. **应用整套推荐** changes the draft only. Preview the selection, adjust individual images, then publish.
+
+The background gallery offers **跟随主题**, **无背景** and five bundled backgrounds. Upload PNG/JPEG images (up to 2 MiB each) or enter an HTTPS image URL. The thumbnail is used on the application card and introduction; the background decorates the published page behind readable content surfaces.
+
+```yaml
+presentation:
+  theme: indigo
+  background: /assets/background-indigo.svg
+  cover: /assets/observatory-cover.svg
+  tags: [Multiband catalogs, Color analysis]
+```
+
+Omit `background` to follow the theme, or use `background: null` for a plain background. Uploaded backgrounds and thumbnails are embedded when exporting application packages. HTTPS images remain external links and must be publicly reachable.
+
+Published pages adapt their layout to inputs. Maps keep a wide selection surface; file-based applications place controls beside results. ICRS selection has a coordinate sketch and zoom controls. Result tables have a bounded scrolling preview; scatter plots provide axes, zoom/reset and hover coordinates. If the geographic basemap cannot connect, maps explicitly show a longitude/latitude selection view; this is not a substitute for geographic imagery.
+
+**开始分析** is disabled while a submission is in flight and throughout queued/running states. It becomes available after completion, failure, timeout or cancellation. Transient status polling failures keep it disabled while the client retries status checks.

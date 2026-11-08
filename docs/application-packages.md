@@ -19,7 +19,8 @@ application.conet.zip
 ├── manifest.json
 ├── application.yaml
 ├── job.yaml
-└── cover.png or cover.jpg  (optional)
+├── cover.png or cover.jpg  (optional)
+└── background.png or background.jpg  (optional)
 ```
 
 The manifest uses `format: conet-application` and `version: 1`. CONET exports the referenced operator versions and optional `data_scope` as dependency information. The Job reference inside `application.yaml` is `job.yaml`. Custom uploaded PNG/JPEG covers are embedded and restored during import. Standard `/assets/` covers and HTTPS covers retain their URL references. A package does not bundle datasets, uploaded inputs, run history, results, operator binaries, runtimes, service credentials or model API settings.
@@ -33,7 +34,7 @@ The destination must provide referenced operators and the required execution env
 - **Load and publish** saves a revision-checked definition and exposes its online page; it does not automatically run analysis.
 - When an imported ID already exists, the editor explicitly states that loading will update that application. The revision is checked again when loading. Duplicate the application to keep both versions.
 
-Packages are limited to 4 MiB compressed and expanded, with at most the five explicitly supported filenames. Application, Job and manifest files are each limited to 256 KiB, covers to 2 MiB. Unknown entries, duplicate names, traversal paths, missing files and invalid definitions are rejected. Entries are read into bounded buffers and never extracted into arbitrary filesystem paths. Import does not execute package contents.
+Packages are limited to 4 MiB compressed and expanded, with at most the seven explicitly supported filenames. Application, Job and manifest files are each limited to 256 KiB, each background or thumbnail image to 2 MiB. Unknown entries, duplicate names, traversal paths, missing files and invalid definitions are rejected. Entries are read into bounded buffers and never extracted into arbitrary filesystem paths. Import does not execute package contents.
 
 ## API and command
 

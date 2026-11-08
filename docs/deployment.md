@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-Use Linux, Java 17, sbt 1.10.7, Python 3.12, OpenSSL, Docker and built DACP distribution directories. Reserve at least 10 GB free disk and approximately 8 GB available memory. Model training and image construction require additional temporary disk space. `bin/conet` uses `sudo -n` for Docker and node process startup; configure suitable local administrative permissions. Personal storage is configured as described in [workspaces](workspaces.md).
+Use Linux, Java 17, sbt 1.10.7, Python 3.12, OpenSSL, Docker and built DACP distribution directories. Reserve at least 10 GB free disk and approximately 8 GB available memory. Model training and image construction require additional temporary disk space. `bin/conet` uses `sudo -n` for Docker and node process startup; configure suitable local administrative permissions. Shared storage is configured as described in [workspaces](workspaces.md).
 
 `DACP_HOME` points to a DACP checkout containing staged programs:
 

@@ -18,10 +18,12 @@ final class Applications(settings:Settings,cases:Map[String,CaseService],inputFi
  private def create(d:Definition)=new ApplicationService(d,settings.state.resolve("appbuilder/runs").resolve(d.id),()=>manifest(d),new UnionBackend(()=>settings.connection),s"/apps/${d.id}",inputFiles)
  private def revision(d:Definition):String=java.security.MessageDigest.getInstance("SHA-256").digest((xstream.util.YamlDocument.dump(Values.copy(d.config).put("job","job.yaml"))+d.jobYaml).getBytes(java.nio.charset.StandardCharsets.UTF_8)).map(b=>f"${b&255}%02x").mkString
  def activeRunKeys:Set[(String,String)]=synchronized{services.values.flatMap(s=>s.records.filter(r=>Set("queued","running")(r.path("state").asText)).map(r=>s.id->r.path("id").asText)).toSet}
+ def captureResults(storage:HostedStorage):Unit=synchronized{services.values.foreach{s=>s.records.filter(_.path("state").asText=="succeeded").foreach{r=>try storage.captureRun(s,r.path("id").asText)catch{case scala.util.control.NonFatal(e)=>System.err.println("Result archive failed: "+e.getMessage)}}}}
  def statistics:JsonNode=synchronized{conet.appbuilder.Usage.aggregate(services.values.toVector.flatMap(_.records))}
  def statisticsFor(ids:Set[String]):JsonNode=synchronized{conet.appbuilder.Usage.aggregate(services.values.filter(s=>ids(s.id)).toVector.flatMap(_.records))}
  def list:JsonNode=synchronized{Values.array(services.values.toVector.sortBy(_.id).map{s=>
   val p=s.definition.config.path("presentation");val n=Values.obj.put("id",s.id).put("title",s.definition.config.path("title").asText).put("description",s.definition.config.path("description").asText).put("url",s"/apps/${s.id}/").put("cover_url",p.path("cover").asText("/assets/app-cover.svg")).put("submissions",s.records.size).put("revision",revision(s.definition))
+  s.records.map(_.path("created_at").asText).filter(_.nonEmpty).sorted.lastOption.foreach(n.put("last_analysis_at",_))
   n.set[JsonNode]("tags",if(p.path("tags").isArray)p.path("tags")else Values.array(Seq.empty));n
  })}
  def upload(n:JsonNode):JsonNode={

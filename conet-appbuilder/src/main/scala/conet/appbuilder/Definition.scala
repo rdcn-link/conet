@@ -97,7 +97,14 @@ object Definition {
   require(references.subsetOf(definition.variableBindings.keySet),"Job 存在未绑定变量："+(references--definition.variableBindings.keySet).toVector.sorted.mkString(", "))
   val theme=n.path("presentation").path("theme")
   if(!theme.isMissingNode)require(theme.isTextual && Set("coast","forest","indigo","amber","rose")(theme.asText),"未知应用主题")
-  val cover=n.path("presentation").path("cover");if(!cover.isMissingNode){require(cover.isTextual,"展示图片必须是地址");val url=cover.asText;require(url.startsWith("/assets/")||url.matches("/appbuilder/media/[a-f0-9]{64}\\.(png|jpg)")||scala.util.Try{val u=java.net.URI.create(url);u.getScheme=="https"&&u.getHost!=null&&u.getUserInfo==null}.getOrElse(false),"展示图片须为本地资源或 HTTPS 图片地址")}
+  Seq("cover","background").foreach { key=>
+    val image=n.path("presentation").path(key)
+    if(!image.isMissingNode && !(key=="background" && image.isNull)){
+      require(image.isTextual,"图片必须是地址："+key)
+      val url=image.asText
+      require(url.startsWith("/assets/")||url.matches("/appbuilder/media/[a-f0-9]{64}\\.(png|jpg)")||scala.util.Try{val u=java.net.URI.create(url);u.getScheme=="https"&&u.getHost!=null&&u.getUserInfo==null}.getOrElse(false),"图片须为本地资源或 HTTPS 图片地址："+key)
+    }
+  }
   val tags=n.path("presentation").path("tags");if(!tags.isMissingNode)require(tags.isArray&&tags.size<=8&&tags.elements.asScala.forall(t=>t.isTextual&&t.asText.length<=32),"标签最多 8 项，每项最多 32 字符")
   val max=n.path("limits").path("max_result_bytes").asLong(8L*1024*1024);require(max>0&&max<=64L*1024*1024,"结果上限须介于 1 字节和 64 MiB")
   val queued=n.path("limits").path("max_queued").asInt(4);require(queued>=1&&queued<=100,"队列上限须介于 1 和 100")

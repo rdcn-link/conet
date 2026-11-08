@@ -73,7 +73,7 @@ python3 scripts/smoke_appbuilder_browser.py --chromium /path/to/chromium
 
 真实共享 Union 执行得到 3 个有效淤地坝候选点和 3118 个天文匹配源。应急检查通过地震、泥石流分析以及影像缺失和水文过期情形。仅通过天文配置发布的第四个应用成功得到 3118 个匹配源，成果及四类使用计数均经过验证；重启 Web 服务后再次检查了已发布定义及统计的持久性。
 
-门户卡片来自已发布应用注册表，包含各应用的描述与封面图。应用可视化编辑与 YAML 同步；Job 在独立窗口的 XStream Job Designer 中编辑。`scripts/smoke_appbuilder_visual.py --chromium /path/to/chromium` 验证显式编辑、复制、Designer 回传、YAML 往返、动态首页一致性及桌面/手机布局。发布后的访客页不展示工作台导航或 YAML 源码。
+门户卡片来自已发布应用注册表，包含各应用的描述与封面图。应用可视化编辑与 YAML 同步；Job 在独立窗口的 XStream Job Designer 中编辑。`scripts/smoke_appbuilder_visual.py --chromium /path/to/chromium` 验证显式编辑、复制、Designer 回传、YAML 往返、动态应用服务列表一致性及桌面/手机布局。发布后的访客页不展示工作台导航或 YAML 源码。
 
 
 ## App Builder 编辑验证
@@ -85,14 +85,14 @@ python3 scripts/smoke_appbuilder_browser.py --chromium /path/to/chromium
 
 `scripts/smoke_appbuilder_configuration.py` 验证紧凑字段与分组编辑、从 Job 值提取变量、缺失绑定、来源选择、结果配置及 YAML 往返，不发布应用。
 
-## 个人空间与共享发布
+## 共享存储与产品发布
 
 
 
-新天文分析返回 **3,118 条匹配**。检查了私有归档、独立分享页、公开元数据及说明报告和获准 CSV。通过 DACP bytes 视图读取 **729,598 字节**，SHA-256 与成果记录一致；records 视图返回 3,118 行。真实提交给 Union 的 `read_item@1.0` Job 读取同一托管结果并返回 3,118 行，Job 为 `74a92337-dba9-4b8b-a8b5-cb260d1c2eee`。撤回另一份测试发布后，其 Catalog 条目消失，分享 API 返回 HTTP 410。测试读取账号仅授予 `reader`，验证后停用。这些结果是合成演示数据，不代表科学有效性验证。
+新天文分析返回 **3,118 条匹配**。检查了未发布归档、独立分享页、公开元数据及说明报告和获准 CSV。通过 DACP bytes 视图读取 **729,598 字节**，SHA-256 与成果记录一致；records 视图返回 3,118 行。真实提交给 Union 的 `read_item@1.0` Job 读取同一托管结果并返回 3,118 行，Job 为 `74a92337-dba9-4b8b-a8b5-cb260d1c2eee`。撤回另一份测试发布后，其 Catalog 条目消失，分享 API 返回 HTTP 410。测试读取账号仅授予 `reader`，验证后停用。这些结果是合成演示数据，不代表科学有效性验证。
 
 ```bash
-python3 scripts/smoke_personal_space.py --root /path/to/conet
+python3 scripts/smoke_workspaces.py --url http://127.0.0.1:8870
 python3 scripts/smoke_products.py --output /tmp/product-run.json
 python3 scripts/smoke_products_browser.py --run /tmp/product-run.json --output /tmp/product-share.json
 python3 scripts/smoke_hosted_products.py --product /tmp/product-share.json --root /path/to/conet --dacp-home /path/to/dacp-codex
@@ -101,7 +101,7 @@ python3 scripts/smoke_hosted_products.py --product /tmp/product-share.json --roo
 
 ## 免登录工作空间检查
 
-Scala 测试覆盖匿名应用开发与存储、旧认证接口移除、空间持久化、来源校验、目录穿越及符号链接防护、配额、不可变发布快照和只读结果归档。运行 `scripts/smoke_workspaces.py` 可免凭据进行本地 HTTP 与浏览器检查。
+Scala 测试覆盖匿名应用开发与存储、旧认证接口移除、单用户共享存储、来源校验、目录穿越及符号链接防护、配额、不可变发布快照和只读结果归档。运行 `scripts/smoke_workspaces.py` 可免凭据进行本地 HTTP 与浏览器检查。
 
 ## 应用程序包与文件输入
 

@@ -46,6 +46,17 @@ limits: {max_queued: 2, max_result_bytes: 1024}
   intercept[IllegalArgumentException](Definition.parse(config,lowerJob))
  }
 
+ test("backgrounds accept trusted asset paths, uploads, HTTPS or explicit no-background") {
+  for(value<-Seq("/assets/background-indigo.svg","/appbuilder/media/"+("a"*64)+".png","https://example.org/background.jpg","null")){
+   val yaml=if(value=="null")"null" else "\""+value+"\""
+   val d=Definition.parse(config+"presentation: {theme: indigo, background: "+yaml+"}\n",job)
+   assert(d.config.path("presentation").has("background"))
+  }
+  for(value<-Seq("http://example.org/image.png","javascript:alert(1)","file:///tmp/image.png","https://user:secret@example.org/image.png")){
+   intercept[IllegalArgumentException](Definition.parse(config+"presentation: {background: \""+value+"\"}\n",job))
+  }
+ }
+
  val manifest=json("{}")
  val result="""{"rows":[{"name":"safe","value":3},{"name":"=1+1","value":4}]}""".getBytes("UTF-8")
  val definition=Definition.parse(config,job)

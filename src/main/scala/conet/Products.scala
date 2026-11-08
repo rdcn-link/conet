@@ -19,6 +19,7 @@ final class Products(settings:Settings) {
  private def path(id:String):Path={require(id.matches("[A-Za-z0-9_-]{32}"),"产品编号无效");directory.resolve(id)}
  private def index(id:String):Option[JsonNode]={val file=path(id).resolve("publication.json");Option.when(Files.isRegularFile(file))(Support.read(file))}
  private def live(n:JsonNode):Boolean= !n.path("revoked").asBoolean&&Instant.now.isBefore(Instant.parse(n.path("expires_at").asText))
+ def list:JsonNode=synchronized{Support.arr(Support.children(directory).filter(p=>Files.isDirectory(p)&&p.getFileName.toString.matches("[A-Za-z0-9_-]{32}")).flatMap(p=>document(p.getFileName.toString)).sortBy(_.path("published_at").asText).reverse)}
  def defaults(service:ApplicationService,id:String):JsonNode={
   val run=service.get(id).getOrElse(throw new IllegalArgumentException("分析记录不存在"));require(run.path("state").asText=="succeeded","只有成功完成的分析可以发布")
   require(run.path("job_yaml").isTextual,"该历史记录缺少完整 Job 快照，请重新执行后发布")

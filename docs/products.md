@@ -20,7 +20,7 @@ Published products are DACP datasets on the shared node. The publication respons
 
 1. Sign in and complete an analysis on `/apps/<id>/` or load a completed run from its history.
 2. Click **发布并分享本次结果**. Review the automatically generated source and artifact lists.
-3. The publisher is attributed to the selected workspace. Fill in the application author/license and each source's data rights holder, hosting provider, license and attribution requirements. Rights declarations are self-declared and are not proof of real-world ownership.
+3. The publisher is recorded as CONET; author and source attribution are provided separately. Fill in the application author/license and each source's data rights holder, hosting provider, license and attribution requirements. Rights declarations are self-declared and are not proof of real-world ownership.
 4. Confirm permission to display derived results. Select download artifacts only when all relevant parties permit their download. Commercial use has a separate permission.
 5. Confirm the declaration and publish. Copy the independent `/products/<random-id>/` address.
 6. Manage or withdraw the product without logging in. Withdrawal also removes its dataset from the shared hosted Catalog.

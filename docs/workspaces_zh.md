@@ -1,21 +1,18 @@
 # 工作空间与共享托管
 
-打开 `/workspace/` 创建或选择工作空间，维护数据集、应用和分析产品。所有功能无需注册、登录、会话、角色审批或远程节点登记。工作空间用于整理资源，任何访客都可以选择和维护任意空间。“未发布”表示不进入 DACP Catalog，不代表私密访问。
+CONET 是单用户系统。打开 `/workspace/`，通过“我发布的app”和“我发布的分析产品”查看全部已发布资源。应用、分析记录和产品统一归当前使用者。产品卡片展示 DACP URI 与发布时间，无需登录或选择空间。
 
-## 数据与分析产品
+## 存储与发布
 
-上传文件、新建目录，将目录登记为数据集。公开发布必须明确确认，并生成不可变快照。修改上传文件不会改变已有公开快照；更新时先撤回，再重新发布。成功的分析结果自动只读归档；允许下载的成果、元数据与报告可以发布为分享产品。到期或撤回会移除 Catalog 可见性并关闭分享页访问。
-
-全部空间共用一个托管 DACP 进程。远程执行网络沿用已配置的七个科学数据节点及其现有 Union 连接。创建空间不会创建远程节点。
+一个共享 DACP 节点托管已发布的数据集和分析产品，与七个科学节点一起连接 Union。上传文件及成功分析归档使用统一存储。存储 API 支持文件操作和数据集发布。公开发布必须明确确认，并创建不可变快照；修改上传文件不会改变已有快照。成功的分析结果只读归档，只有获准的成果文件、元数据与报告进入公开产品。撤回或到期会移除目录可见性并关闭分享页访问。
 
 ```mermaid
 flowchart LR
-  W[工作空间] --> F[上传文件]
-  F --> D[数据集草稿]
+  F[上传文件] --> D[数据集草稿]
   D -->|确认发布| S[不可变快照]
   J[应用分析] --> R[只读归档]
   R --> P[公开产品]
-  S --> C[共享托管 Catalog]
+  S --> C[共享托管目录]
   P --> C
 ```
 
@@ -28,26 +25,25 @@ hosting:
   max_upload_bytes: 16777216
 ```
 
-默认每空间配额 1 GiB，单文件上传上限 16 MiB。文件位于 `.state/hosting/spaces/<workspace-id>/`，空间名称及资源归类保存在 `.state/workspaces.json`。发布描述位于 `.state/hosting/publications/`。仅明确发布的描述通过 `conet-hosted` DataCatalogProvider 插件进入 Catalog，格式能力由节点已安装的格式插件提供。
+默认统一存储配额为 1 GiB，单文件上传上限为 16 MiB。文件、数据集草稿及分析归档位于 `.state/hosting/storage/`，发布描述位于 `.state/hosting/publications/`。明确发布的描述通过 `conet-hosted` DataCatalogProvider 插件进入目录，科学格式由节点已安装的格式插件处理。产品数据集元数据包含产品标识及发布时间，使数据目录能够将其标为“数据分析产品”。
 
 ```bash
-sbt 'appbuilder/test' 'hosting/test' test stage
+sbt test stage
 bin/conet restart-web
 bin/conet hosting-status
 ```
 
-`restart-web` 保留原有节点和 Union；`hosting-up`、`hosting-down` 管理唯一的共享托管节点。节点凭据由服务端维护，不发送到浏览器。
+`restart-web` 保留已有节点与 Union；`hosting-up`、`hosting-down` 管理共享托管节点。节点凭据保留在服务端。
 
 ## API
 
 | 接口 | 用途 |
 |---|---|
-| `GET /api/workspaces` | 空间列表与当前选择 |
-| `POST /api/workspaces` | 使用 `{"name":"Research"}` 创建空间 |
-| `GET /api/workspaces/resources` | 当前空间的资源引用 |
+| `GET /api/appbuilder/apps` | 已发布应用 |
+| `GET /api/products` | 当前有效的已发布分析产品 |
 | `GET /api/storage/summary`、`/datasets`、`/results` | 容量、数据集草稿与只读归档 |
-| `POST /api/storage/list`、`/mkdir`、`/upload`、`/download`、`/delete` | 文件操作，完整前缀均为 `/api/storage` |
+| `POST /api/storage/list`、`/mkdir`、`/upload`、`/download`、`/delete` | 文件操作，每项均使用 `/api/storage` 前缀 |
 | `POST /api/storage/dataset`、`/publish`、`/unpublish` | 数据集登记与发布 |
 | `GET /api/storage/result-files/<archive>/<file>` | 已声明的归档成果 |
 
-使用 `X-Conet-Workspace: <id>` 选择命名空间，未提供时使用默认共享空间。普通归档下载链接可使用 `?workspace=<id>`。这些标识不是凭据。拒绝绝对路径、目录穿越、符号链接和未声明的结果文件；保留上传配额、不可变快照及跨站修改检查。需要时由部署方为门户配置适当的网络访问边界。
+所有请求使用同一套共享存储。拒绝绝对路径、目录穿越、符号链接和未声明的成果文件。上传配额、不可变快照及跨站修改校验保持有效。请为门户配置合适的网络访问边界。

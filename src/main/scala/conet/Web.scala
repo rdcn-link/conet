@@ -20,11 +20,8 @@ final class Web(settings:Settings) extends AutoCloseable {
  private val applicationChat=new ApplicationChat(settings,applications)
  private val storage=new HostedStorage(settings)
  private val products=new Products(settings)
- private val workspaces=new Workspaces(settings.state.resolve("workspaces.json"))
- private def actor(x:HttpExchange):Workspace={val id=Option(x.getRequestHeaders.getFirst("X-Conet-Workspace")).getOrElse(Option(x.getRequestURI.getRawQuery).toVector.flatMap(_.split("&")).find(_.startsWith("workspace=")).map(_.stripPrefix("workspace=")).getOrElse(workspaces.default.id));workspaces.get(id)}
- private def submitter(x:HttpExchange):Option[JsonNode]=Some(actor(x).json)
- private def runKey(app:String,id:String)="run:"+app+":"+id
- private def submitted(x:HttpExchange,app:String,result:(Int,JsonNode)):Unit={val(code,value)=result;if(code==202)workspaces.record(actor(x),runKey(app,value.path("id").asText));json(x,code,value)}
+ private def submitter(x:HttpExchange):Option[JsonNode]=None
+ private def submitted(x:HttpExchange,app:String,result:(Int,JsonNode)):Unit={val(code,value)=result;json(x,code,value)}
  private val workers=Executors.newFixedThreadPool(16)
  private val observations=Executors.newFixedThreadPool(math.max(4,settings.cases.size+2))
  private val scheduler=Executors.newSingleThreadScheduledExecutor()
@@ -57,7 +54,7 @@ final class Web(settings:Settings) extends AutoCloseable {
   val publication="^/api/jobs/([a-zA-Z0-9-]{1,100})/publication$".r
   path match {
    case publication(id) if x.getRequestMethod=="GET"=>json(x,200,products.defaults(service,id));return
-   case publication(id) if x.getRequestMethod=="POST"=>val a=actor(x);val body=Support.copy(requestBody(x,262144));body.put("publisher_name",a.name);storage.captureRun(a,service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集");val published=products.publish(service,id,body,node.path("url").asText);val productId=published.path("id").asText;workspaces.record(a,"product:"+productId);try{storage.publishProduct(a,productId,products)}catch{case NonFatal(e)=>products.revoke(productId);throw e};json(x,201,published);return
+   case publication(id) if x.getRequestMethod=="POST"=>val body=Support.copy(requestBody(x,262144));body.put("publisher_name","CONET");storage.captureRun(service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集");val published=products.publish(service,id,body,node.path("url").asText);val productId=published.path("id").asText;try{storage.publishProduct(productId,products)}catch{case NonFatal(e)=>products.revoke(productId);throw e};json(x,201,published);return
    case _=>()
   }
   val method=x.getRequestMethod
@@ -76,43 +73,39 @@ final class Web(settings:Settings) extends AutoCloseable {
    else json(x,404,Support.obj.put("error","未找到资源"))
   }else json(x,405,Support.obj.put("error","不支持该方法"))
  }
- private val portalFiles=Map("/catalog"->"catalog.html","/catalog/"->"catalog.html","/catalog.js"->"catalog.js","/catalog.css"->"catalog.css","/navigation.css"->"navigation.css","/"->"index.html","/screen"->"screen.html","/screen/"->"screen.html","/style.css"->"style.css","/app.js"->"app.js","/screen-panels.js"->"screen-panels.js","/screen.js"->"screen.js","/screen.css"->"screen.css","/job-plan"->"job-plan.html","/job-plan.js"->"job-plan.js","/job-plan.css"->"job-plan.css","/assets/tianditu.js"->"assets/tianditu.js","/assets/earth.jpg"->"assets/earth.jpg","/assets/conet-mark.svg"->"assets/conet-mark.svg","/assets/app-cover.svg"->"assets/app-cover.svg","/assets/check-dams-cover.svg"->"assets/check-dams-cover.svg","/assets/observatory-cover.svg"->"assets/observatory-cover.svg","/assets/emergency-cover.svg"->"assets/emergency-cover.svg")
+ private val portalFiles=Map("/nodes"->"nodes.html","/nodes/"->"nodes.html","/services"->"services.html","/services/"->"services.html","/assets/background-coast.svg"->"assets/background-coast.svg","/assets/background-forest.svg"->"assets/background-forest.svg","/assets/background-indigo.svg"->"assets/background-indigo.svg","/assets/background-amber.svg"->"assets/background-amber.svg","/assets/background-rose.svg"->"assets/background-rose.svg","/catalog"->"catalog.html","/catalog/"->"catalog.html","/catalog.js"->"catalog.js","/catalog.css"->"catalog.css","/navigation.css"->"navigation.css","/"->"index.html","/screen"->"screen.html","/screen/"->"screen.html","/style.css"->"style.css","/app.js"->"app.js","/screen-panels.js"->"screen-panels.js","/screen.js"->"screen.js","/screen.css"->"screen.css","/job-plan"->"job-plan.html","/job-plan.js"->"job-plan.js","/job-plan.css"->"job-plan.css","/assets/tianditu.js"->"assets/tianditu.js","/assets/earth.jpg"->"assets/earth.jpg","/assets/conet-mark.svg"->"assets/conet-mark.svg","/assets/app-cover.svg"->"assets/app-cover.svg","/assets/check-dams-cover.svg"->"assets/check-dams-cover.svg","/assets/observatory-cover.svg"->"assets/observatory-cover.svg","/assets/emergency-cover.svg"->"assets/emergency-cover.svg")
  private def handlePortal(x:HttpExchange):Unit={
   val path=x.getRequestURI.getPath
   if(path=="/workspace"||path=="/workspace/"){builderAsset(x,"workspace.html");return}
-  if(path=="/api/workspaces"&&x.getRequestMethod=="GET"){val n=Support.obj;n.set[JsonNode]("workspaces",workspaces.list);n.set[JsonNode]("current",actor(x).json);json(x,200,n);return}
-  if(path=="/api/workspaces"&&x.getRequestMethod=="POST"){json(x,201,workspaces.create(requestBody(x).path("name").asText).json);return}
-  if(path=="/api/workspaces/resources"&&x.getRequestMethod=="GET"){json(x,200,workspaces.resources(actor(x)));return}
   if(path=="/api/catalog"&&x.getRequestMethod=="GET"){json(x,200,catalog.list());return}
   if(path.startsWith("/api/catalog/")&&x.getRequestMethod=="POST"){
    val b=requestBody(x);val name=b.path("dataset").asText;val item=b.path("path").asText("/")
    path match{case "/api/catalog/refresh"=>json(x,200,catalog.list(true));case "/api/catalog/items"=>json(x,200,catalog.items(name,item));case "/api/catalog/preview"=>json(x,200,catalog.preview(name,item));case "/api/catalog/presign"=>json(x,200,catalog.presign(name,item));case _=>json(x,404,Support.obj.put("error","未找到资源"))};return
   }
   if(path=="/appbuilder"||path=="/appbuilder/"){if(x.getRequestMethod=="GET")builderAsset(x,"builder.html")else json(x,405,Support.obj.put("error","不支持该方法"));return}
-  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("workspace-context.js","personal-space.js","workspace.js","workspace.css","builder.js","assistant.js","configuration-forms.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
+  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("workspace.js","workspace.css","builder.js","assistant.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
   if(path.startsWith("/appbuilder/media/")&&x.getRequestMethod=="GET"){applications.media(path.stripPrefix("/appbuilder/media/")) match{case Some(p)=>file(x,p);case None=>json(x,404,Support.obj.put("error","未找到展示图片"))};return}
   if(path.startsWith("/api/storage/")){
-   val a=actor(x);val action=path.stripPrefix("/api/storage/")
-   if(action=="summary"&&x.getRequestMethod=="GET"){json(x,200,storage.summary(a));return}
-   if(action=="results"&&x.getRequestMethod=="GET"){json(x,200,storage.resultDatasets(a));return}
-   if(action.startsWith("result-files/")&&x.getRequestMethod=="GET"){val parts=action.stripPrefix("result-files/").split("/",-1);require(parts.length==2,"结果路径无效");val p=storage.resultFile(a,parts(0),parts(1));x.getResponseHeaders.set("Content-Disposition","attachment; filename=\"download\"");file(x,p);return}
-   if(action=="datasets"&&x.getRequestMethod=="GET"){json(x,200,storage.datasets(a));return}
+   val action=path.stripPrefix("/api/storage/")
+   if(action=="summary"&&x.getRequestMethod=="GET"){json(x,200,storage.summary);return}
+   if(action=="results"&&x.getRequestMethod=="GET"){json(x,200,storage.resultDatasets);return}
+   if(action.startsWith("result-files/")&&x.getRequestMethod=="GET"){val parts=action.stripPrefix("result-files/").split("/",-1);require(parts.length==2,"结果路径无效");val p=storage.resultFile(parts(0),parts(1));x.getResponseHeaders.set("Content-Disposition","attachment; filename=\"download\"");file(x,p);return}
+   if(action=="datasets"&&x.getRequestMethod=="GET"){json(x,200,storage.datasets);return}
    if(x.getRequestMethod!="POST"){json(x,405,Support.obj.put("error","请使用 POST"));return}
    val b=requestBody(x,if(action=="upload")((storage.maxUploadBytes+2)/3*4+16384).toInt else 16384)
    action match {
-    case "list"=>json(x,200,storage.list(a,b.path("path").asText))
-    case "mkdir"=>storage.mkdir(a,b.path("path").asText);json(x,201,Support.obj.put("created",true))
-    case "upload"=>json(x,201,storage.upload(a,b))
-    case "download"=>val p=storage.download(a,b.path("path").asText);x.getResponseHeaders.set("Content-Disposition","attachment; filename=\"download\"");file(x,p)
-    case "delete"=>storage.delete(a,b.path("path").asText);json(x,200,Support.obj.put("deleted",true))
-    case "dataset"=>json(x,201,storage.saveDataset(a,b))
-    case "publish"=>json(x,201,storage.publish(a,b))
-    case "unpublish"=>val id=b.path("id").asText;storage.unpublish(a,id);if(id.startsWith("result-"))products.revoke(id.stripPrefix("result-"));json(x,200,Support.obj.put("published",false))
+    case "list"=>json(x,200,storage.list(b.path("path").asText))
+    case "mkdir"=>storage.mkdir(b.path("path").asText);json(x,201,Support.obj.put("created",true))
+    case "upload"=>json(x,201,storage.upload(b))
+    case "download"=>val p=storage.download(b.path("path").asText);x.getResponseHeaders.set("Content-Disposition","attachment; filename=\"download\"");file(x,p)
+    case "delete"=>storage.delete(b.path("path").asText);json(x,200,Support.obj.put("deleted",true))
+    case "dataset"=>json(x,201,storage.saveDataset(b))
+    case "publish"=>json(x,201,storage.publish(b))
+    case "unpublish"=>val id=b.path("id").asText;storage.unpublish(id);if(id.startsWith("result-"))products.revoke(id.stripPrefix("result-"));json(x,200,Support.obj.put("published",false))
     case _=>json(x,404,Support.obj.put("error","未找到资源"))
    };return
   }
   if(path.startsWith("/api/appbuilder/")){
-   val a=actor(x)
 
 
    if(path=="/api/appbuilder/packages/import"&&x.getRequestMethod=="POST"){
@@ -129,7 +122,7 @@ final class Web(settings:Settings) extends AutoCloseable {
     val url=settings.config.path("appbuilder").path("designer_url").asText("");if(url.nonEmpty){val uri=URI.create(url);require(Set("http","https")(uri.getScheme)&&uri.getHost!=null&&uri.getUserInfo==null,"Job Designer 地址无效")};json(x,200,Support.obj.put("designer_url",url).put("chat_enabled",applicationChat.enabled))
    }else if(path=="/api/appbuilder/statistics"&&x.getRequestMethod=="GET"){val stats=applications.statistics;stats.path("nodes").elements.asScala.foreach{row=>cached.path("overview").path("members").elements.asScala.find(_.path("identity").asText==row.path("id").asText).foreach{member=>settings.centers.find(_.path("id").asText==member.path("center_id").asText).foreach(center=>row.asInstanceOf[ObjectNode].put("name",center.path("title").asText))}};json(x,200,stats)}
    else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="GET")json(x,200,applications.list)
-   else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="POST"){val body=requestBody(x,262144);val id=xstream.util.YamlDocument.parse(body.path("application_yaml").asText).path("id").asText;json(x,201,{val saved=applications.save(body);workspaces.record(a,"app:"+id);saved})}
+   else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="POST"){val body=requestBody(x,262144);val id=xstream.util.YamlDocument.parse(body.path("application_yaml").asText).path("id").asText;json(x,201,{val saved=applications.save(body);saved})}
    else if(path=="/api/appbuilder/media"&&x.getRequestMethod=="POST")json(x,201,applications.upload(requestBody(x,3000000)))
    else if(path=="/api/appbuilder/convert"&&x.getRequestMethod=="POST")json(x,200,applications.convert(requestBody(x,262144)))
    else if(path=="/api/appbuilder/chat"&&x.getRequestMethod=="POST")json(x,200,applicationChat.reply(requestBody(x,524288)))
@@ -137,11 +130,12 @@ final class Web(settings:Settings) extends AutoCloseable {
    else if(path.startsWith("/api/appbuilder/apps/")&&x.getRequestMethod=="GET")applications.document(path.stripPrefix("/api/appbuilder/apps/")) match{case Some(n)=>val doc=Support.copy(n).put("can_edit",true);json(x,200,doc);case None=>json(x,404,Support.obj.put("error","未找到应用"))}
    else json(x,404,Support.obj.put("error","未找到资源"));return
   }
+  if(path=="/api/products"&&x.getRequestMethod=="GET"){json(x,200,products.list);return}
   if(path.startsWith("/products/")){
    x.getResponseHeaders.set("X-Robots-Tag","noindex")
    val parts=path.stripPrefix("/products/").split("/",-1);val id=parts(0);val suffix=parts.drop(1).mkString("/")
    if(suffix=="permissions"&&x.getRequestMethod=="GET"){json(x,200,Support.obj.put("manage",true));return}
-   if(suffix=="revoke"&&x.getRequestMethod=="POST"){val body=requestBody(x);storage.withdrawProduct(actor(x),id);if(products.revoke(id))json(x,200,Support.obj.put("revoked",true))else json(x,404,Support.obj.put("error","产品不存在"));return}
+   if(suffix=="revoke"&&x.getRequestMethod=="POST"){val body=requestBody(x);storage.withdrawProduct(id);if(products.revoke(id))json(x,200,Support.obj.put("revoked",true))else json(x,404,Support.obj.put("error","产品不存在"));return}
    if(x.getRequestMethod!="GET"){json(x,405,Support.obj.put("error","不支持该方法"));return}
    if(products.document(id).isEmpty){json(x,410,Support.obj.put("error","产品不存在、已过期或已撤回"));return}
    suffix match {
@@ -201,7 +195,7 @@ final class Web(settings:Settings) extends AutoCloseable {
   startOne(settings.config.path("host").asText,settings.config.path("port").asInt,handlePortal)
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=try{cached=snapshot()}catch{case NonFatal(_)=>cached=Support.obj.put("available",false)}},0,1,TimeUnit.SECONDS)
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=try{products.cleanupExpired()}catch{case NonFatal(e)=>System.err.println("Product retention cleanup failed: "+e.getClass.getSimpleName)}},0,1,TimeUnit.HOURS)
-  scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=workspaces.resourceOwners.filter(_._1.startsWith("run:")).foreach{case(key,owner)=>try{val parts=key.split(":",3);applications.get(parts(1)).foreach(service=>storage.captureRun(workspaces.get(owner),service,parts(2)))}catch{case NonFatal(e)=>System.err.println("Result archive failed: "+e.getMessage)}}},5,15,TimeUnit.SECONDS)
+  scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=applications.captureResults(storage)},5,15,TimeUnit.SECONDS)
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=try uploads.cleanup(applications.activeRunKeys)catch{case NonFatal(e)=>System.err.println("Input cleanup failed: "+e.getClass.getSimpleName)}},30,60,TimeUnit.SECONDS)
   println(s"CONET: http://${settings.publicHost}:${settings.config.path("port").asInt}/")
  }

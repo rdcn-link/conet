@@ -1,21 +1,18 @@
-# Workspaces and shared hosting
+# Workspace and shared hosting
 
-Open `/workspace/` to create or select a workspace and manage datasets, applications and analysis products. No registration, login, session, role approval or remote-node enrollment is required. Workspaces organize resources; any visitor can select and maintain any workspace. Unpublished means absent from the DACP Catalog, not private access.
+CONET is a single-user system. Open `/workspace/` to view all published apps and analysis products under “我发布的app” and “我发布的分析产品”. Apps, runs and products belong to the same user. Publication cards show their DACP URI and publication time. No login or workspace selection is required.
 
-## Data and analysis products
+## Storage and publication
 
-Upload files, create folders and register a folder as a dataset. Publishing requires explicit confirmation and creates an immutable snapshot. Editing uploaded files does not alter an existing published snapshot. Withdraw and republish to update it. Successful analysis results are archived read-only; permitted result files, metadata and reports can be published as shared products. Expiry and withdrawal remove Catalog visibility and shared-page access.
-
-All workspaces share one hosted DACP process. The remote execution network reuses the seven configured scientific nodes and their existing Union connections. Workspaces do not create remote nodes.
+One shared DACP node hosts published datasets and analysis products alongside the seven scientific nodes connected to Union. Uploaded files and successful analysis archives use shared storage. Storage APIs support file operations and dataset publication. Publishing requires explicit confirmation and creates an immutable snapshot; editing an uploaded file does not alter a published snapshot. Successful analysis results are archived read-only. Only permitted artifacts, metadata and reports enter a published product. Withdrawal and expiry remove catalog visibility and shared-page access.
 
 ```mermaid
 flowchart LR
-  W[Workspace] --> F[Uploaded files]
-  F --> D[Dataset draft]
+  F[Uploaded files] --> D[Dataset draft]
   D -->|Confirm publication| S[Immutable snapshot]
   J[Application run] --> R[Read-only archive]
   R --> P[Published product]
-  S --> C[Shared hosted Catalog]
+  S --> C[Shared hosted catalog]
   P --> C
 ```
 
@@ -28,26 +25,25 @@ hosting:
   max_upload_bytes: 16777216
 ```
 
-The default quota is 1 GiB per workspace; uploads default to 16 MiB each. Files are under `.state/hosting/spaces/<workspace-id>/`, workspace names and resource assignments in `.state/workspaces.json`. Publication descriptors are under `.state/hosting/publications/`. Only explicitly published descriptors enter Catalog through the `conet-hosted` DataCatalogProvider plugin. File formats use the node's installed format plugins.
+The default shared storage quota is 1 GiB; each file upload is limited to 16 MiB. Files, dataset drafts and result archives are under `.state/hosting/storage/`. Publication descriptors are under `.state/hosting/publications/`. Explicit publications enter the catalog through the `conet-hosted` DataCatalogProvider plugin; scientific formats use the node's installed format plugins. Product dataset metadata contains its product identifier and publication time, allowing the data catalog to label analysis products.
 
 ```bash
-sbt 'appbuilder/test' 'hosting/test' test stage
+sbt test stage
 bin/conet restart-web
 bin/conet hosting-status
 ```
 
-`restart-web` preserves the existing nodes and Union. `hosting-up` and `hosting-down` manage the single shared hosted node. The server owns node credentials; none are exposed to browsers.
+`restart-web` preserves existing nodes and Union; `hosting-up` and `hosting-down` manage the shared hosted node. Node credentials remain on the server.
 
 ## API
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/workspaces` | List workspaces and current selection |
-| `POST /api/workspaces` | Create with `{"name":"Research"}` |
-| `GET /api/workspaces/resources` | Resource references in the selected workspace |
+| `GET /api/appbuilder/apps` | Published apps |
+| `GET /api/products` | Active published analysis products |
 | `GET /api/storage/summary`, `/datasets`, `/results` | Capacity, dataset drafts and read-only archives |
-| `POST /api/storage/list`, `/mkdir`, `/upload`, `/download`, `/delete` | File operations, each with the full `/api/storage` prefix |
+| `POST /api/storage/list`, `/mkdir`, `/upload`, `/download`, `/delete` | File operations; each path uses the `/api/storage` prefix |
 | `POST /api/storage/dataset`, `/publish`, `/unpublish` | Dataset registration and publication |
-| `GET /api/storage/result-files/<archive>/<file>` | Declared archived artifact |
+| `GET /api/storage/result-files/<archive>/<file>` | Declared archive artifacts |
 
-Select a namespace with `X-Conet-Workspace: <id>`; omission selects the shared default. Ordinary artifact links can use `?workspace=<id>`. These identifiers are not credentials. Absolute paths, traversal, symbolic links and undeclared result files are rejected; upload quotas, immutable snapshots and cross-origin mutation checks apply. Place the portal behind an appropriate network boundary when needed.
+All requests use the same shared storage. Absolute paths, traversal, symbolic links and undeclared artifacts are rejected. Upload quotas, immutable snapshots and cross-origin mutation checks apply. Configure an appropriate network access boundary for the portal.

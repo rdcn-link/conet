@@ -87,7 +87,7 @@ Open `/appbuilder/` to configure, preview and publish analysis applications afte
 
 [Analysis product publication and sharing](docs/products.md): immutable results, generated provenance, multi-party rights review and read-only sharing.
 
-[Accounts, personal spaces and shared hosting](docs/workspaces.md)
+[Workspace and shared hosting](docs/workspaces.md)
 
 ## Application delivery and file inputs
 

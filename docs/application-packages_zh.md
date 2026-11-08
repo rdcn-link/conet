@@ -19,7 +19,8 @@ application.conet.zip
 ├── manifest.json
 ├── application.yaml
 ├── job.yaml
-└── cover.png 或 cover.jpg（可选）
+├── cover.png 或 cover.jpg（可选）
+└── background.png 或 background.jpg（可选）
 ```
 
 清单采用 `format: conet-application`、`version: 1`。CONET 导出时记录引用的算子版本及可选的 `data_scope`，用于说明依赖。`application.yaml` 内的 Job 引用固定为 `job.yaml`。自定义上传的 PNG/JPEG 封面随包保存，导入时恢复；标准 `/assets/` 封面及 HTTPS 封面保留 URL 引用。包不包含数据集、上传输入、运行历史、结果、算子二进制、运行环境、服务凭据或模型 API 配置。
@@ -33,7 +34,7 @@ application.conet.zip
 - “加载并发布”在修订校验后保存定义并提供在线页面，不自动开始分析。
 - 导入的 ID 已存在时，编辑器明确提示加载将更新同名应用，加载时再次核对修订。要保留两份应用可先复制。
 
-程序包的压缩及展开内容均不得超过 4 MiB，只接受五个明确支持的文件名。应用、Job 和清单各不超过 256 KiB，封面不超过 2 MiB。拒绝未知文件、重复名称、路径穿越、缺失文件及无效定义。条目使用受限缓冲区读取，不解压到任意文件系统路径。导入不会执行包中的内容。
+程序包的压缩及展开内容均不得超过 4 MiB，只接受七个明确支持的文件名。应用、Job 和清单各不超过 256 KiB，每张背景图或缩略图不超过 2 MiB。拒绝未知文件、重复名称、路径穿越、缺失文件及无效定义。条目使用受限缓冲区读取，不解压到任意文件系统路径。导入不会执行包中的内容。
 
 ## API 与命令
 

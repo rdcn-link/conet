@@ -46,7 +46,7 @@ The topology uses Union's `/api/topology`: receiver-observed task payloads over 
 
 ## Security and storage
 
-The browser has no service credentials. A backend runner account accesses the Union; accepted Union membership permits the configured node operations. Private keys and Tokens remain under ignored `.state/`. CONET provides freely selectable organizational workspaces without login or role review. Node service credentials remain administrator-managed; see [workspaces](workspaces.md). For public deployment, apply your normal reverse-proxy/access boundary and operational hardening.
+The browser has no service credentials. A backend runner account accesses the Union; accepted Union membership permits the configured node operations. Private keys and Tokens remain under ignored `.state/`. CONET is a single-user system with shared applications, runs and products. Node service credentials remain administrator-managed; see [workspaces](workspaces.md). For public deployment, apply your normal reverse-proxy/access boundary and operational hardening.
 
 ![CONET operations screen](images/screen.png)
 
@@ -103,3 +103,7 @@ Idle Union links fade gently between 6% and 26% opacity over seven seconds. Hove
 Click a recent job on the operations screen to open its physical-plan DAG in a modal. It uses the Union dashboard renderer and actual job details, including execution servers, process units, dependencies and observed traffic. The modal defaults to vertical swimlanes with a dark blue palette matching the screen. Title and layout toolbars are hidden; discreet corner controls fit the graph or refresh the plan. Drag to pan and click graph elements to inspect them. Close with the close button, backdrop or Escape. Jobs not yet submitted, unavailable plans and service errors receive explicit messages. Read-only same-origin routes expose only fixed DAG assets and job-detail lookups against the configured Union; no client-supplied server destinations are accepted.
 
 The operational network has eight Node members: the existing seven scientific data centers and one shared hosting center. The Union coordinates them and is not counted as a Node. The shared center also serves temporary application inputs; see [file inputs](file-inputs.md).
+
+## Portal overview
+
+The homepage introduces the collaboration network and links to application services, the data catalog and App Builder. It shows service-backed counts for online nodes, advertised datasets, published applications and analysis submissions; unavailable counts remain unknown and partial catalog counts are marked. Up to three applications are selected by submission count. Recent products use dataset publication metadata, and activity shows the latest submission per application and recent product publications. Empty sections show an explicit empty state. The full published application list is at `/services/`, and member summaries are at `/nodes/`. Homepage overview data loads on opening; the collaboration screen retains live updates.

@@ -74,7 +74,7 @@ async def run(args):
             assert '天文颜色课堂' in await page.locator('#application-visual input[aria-label="应用名称"]').input_value()
         after = await (await page.request.get(args.url + '/api/appbuilder/apps/observatory-builder-demo')).json()
         assert after['revision'] == original['revision'], 'Draft edits must not publish'
-        await page.goto(args.url + '/', wait_until='domcontentloaded')
+        await page.goto(args.url + '/services/', wait_until='domcontentloaded')
         await page.wait_for_function("document.querySelectorAll('#case-cards .case-card').length > 0")
         applications = await (await page.request.get(args.url + '/api/appbuilder/apps')).json()
         assert await page.locator('#case-cards .case-card').count() == len(applications)

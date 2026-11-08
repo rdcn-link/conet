@@ -88,7 +88,7 @@ bin/conet restart-web  # 保留节点、Union、输入数据和结果
 bin/conet down
 ```
 
-启动会在 `.state/network/` 创建持久 CA、各成员及 Union 的独立证书、Union 授权和 runner 账号。七个节点和 Union 使用本机可用端口，从现有案例清单和分析参数生成四个小型参考数据集，等待科学数据集全部可见后，启动一个 Scala JVM，在 8870 端口提供门户和 `/apps/<id>/` 应用。共享中心提供个人空间与数据产品目录，加入同一个 Union；网络共包含八个成员。节点和 Union 看板在动态端口上监听所有网卡，地址写入 `.state/network/connection.json`。门户应仅向可信网络开放，或置于已有访问边界之后。门户不会把服务 Token 或私钥发给浏览器。
+启动会在 `.state/network/` 创建持久 CA、各成员及 Union 的独立证书、Union 授权和 runner 账号。七个节点和 Union 使用本机可用端口，从现有案例清单和分析参数生成四个小型参考数据集，等待科学数据集全部可见后，启动一个 Scala JVM，在 8870 端口提供门户和 `/apps/<id>/` 应用。共享中心提供共享存储与数据产品目录，加入同一个 Union；网络共包含八个成员。节点和 Union 看板在动态端口上监听所有网卡，地址写入 `.state/network/connection.json`。门户应仅向可信网络开放，或置于已有访问边界之后。门户不会把服务 Token 或私钥发给浏览器。
 
 进程 PID 和应用启动时间均会记录。停止时检查进程归属，只向所管理的进程组发信号；启动失败会回收其已启动进程。科学输入数据和完成的结果在停止后保留。日志位于 `.state/*.log` 和 `.state/network/*.log`。
 

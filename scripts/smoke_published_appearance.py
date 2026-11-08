@@ -9,7 +9,8 @@ async def main():
   for app,theme in [('check-dams','forest'),('observatory','indigo'),('emergency','amber'),('uploaded-csv','coast')]:
    await page.set_viewport_size({'width':1440,'height':1000})
    await page.goto('http://127.0.0.1:8870/apps/'+app+'/');await page.wait_for_function('!!document.body.dataset.theme')
-   assert await page.locator('body').get_attribute('data-theme')==theme
+   config=await(await page.request.get('http://127.0.0.1:8870/apps/'+app+'/api/config')).json()
+   assert await page.locator('body').get_attribute('data-theme')==config['application'].get('presentation',{}).get('theme','coast')
    assert await page.locator('.app-hero').is_visible()
    assert await page.locator('#results').is_hidden() and await page.locator('#empty').is_visible()
    assert await page.locator('.conet-navigation').count()==0

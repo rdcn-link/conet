@@ -73,7 +73,7 @@ The Python environment for emergency checks requires `shapely`; browser checks r
 
 Real shared-Union runs produced 3 valid check-dam candidates and 3118 matched astronomical sources. Emergency checks passed earthquake and mudslide analyses, plus missing-imagery and stale-hydrology scenarios. A fourth application published only from the observatory configuration completed with 3118 matched sources; its artifacts and all four usage counter categories were verified. Published definitions and counters were checked after restarting the web services.
 
-The portal cards are sourced from the published application registry, including each application description and cover image. The application visual editor synchronizes with YAML; Job editing uses XStream Job Designer in a separate window. `scripts/smoke_appbuilder_visual.py --chromium /path/to/chromium` verifies explicit editing, duplication, Designer return, YAML roundtrip, dynamic homepage consistency and desktop/mobile layouts. Published visitor pages expose no workbench navigation or YAML source.
+The portal cards are sourced from the published application registry, including each application description and cover image. The application visual editor synchronizes with YAML; Job editing uses XStream Job Designer in a separate window. `scripts/smoke_appbuilder_visual.py --chromium /path/to/chromium` verifies explicit editing, duplication, Designer return, YAML roundtrip, published application-list consistency and desktop/mobile layouts. Published visitor pages expose no workbench navigation or YAML source.
 
 
 ## App Builder authoring verification
@@ -85,14 +85,14 @@ The public-page test stubs the external map frame to verify form, history and pr
 
 `scripts/smoke_appbuilder_configuration.py` checks compact field/group editing, variables extracted from Job values, missing bindings, fixed source selection, result controls and YAML roundtrip without publishing.
 
-## Personal spaces and shared publication
+## Shared storage and product publication
 
 
 
 A new observatory run returned **3,118 matches**. Its read-only archive, independently shared page, public metadata/report and permitted CSV were verified. DACP bytes reading returned **729,598 bytes** with the expected SHA-256; the records view returned 3,118 rows. A real `read_item@1.0` Job submitted to the Union read the same hosted result and returned 3,118 rows (Job `74a92337-dba9-4b8b-a8b5-cb260d1c2eee`). Withdrawing a separate test publication removed its Catalog entry and made its share API return HTTP 410. The test reader account was restricted to `reader` and disabled after verification. These are synthetic demonstration results, not scientific validation.
 
 ```bash
-python3 scripts/smoke_personal_space.py --root /path/to/conet
+python3 scripts/smoke_workspaces.py --url http://127.0.0.1:8870
 python3 scripts/smoke_products.py --output /tmp/product-run.json
 python3 scripts/smoke_products_browser.py --run /tmp/product-run.json --output /tmp/product-share.json
 python3 scripts/smoke_hosted_products.py --product /tmp/product-share.json --root /path/to/conet --dacp-home /path/to/dacp-codex
@@ -101,7 +101,7 @@ python3 scripts/smoke_hosted_products.py --product /tmp/product-share.json --roo
 
 ## Anonymous workspace checks
 
-The Scala suites cover anonymous authoring and storage, removed authentication routes, namespace persistence, origin checks, traversal and symlink rejection, quotas, immutable publication snapshots, and read-only result archives. Run `scripts/smoke_workspaces.py` for local HTTP and browser verification without credentials.
+The Scala suites cover anonymous authoring and storage, removed authentication routes, single-user shared storage, origin checks, traversal and symlink rejection, quotas, immutable publication snapshots, and read-only result archives. Run `scripts/smoke_workspaces.py` for local HTTP and browser verification without credentials.
 
 ## Application packages and file inputs
 
