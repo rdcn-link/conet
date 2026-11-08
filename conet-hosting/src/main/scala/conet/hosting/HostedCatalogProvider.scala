@@ -15,6 +15,7 @@ class HostedCatalogProvider extends DataCatalogProvider {
   def entry(path:Path):JsonNode={require(!Files.isSymbolicLink(path),"publication descriptor cannot be a symlink");new com.fasterxml.jackson.databind.ObjectMapper().readTree(Files.readAllBytes(path))}
   def description(n:JsonNode):String={
    val metadata=new com.fasterxml.jackson.databind.ObjectMapper().readTree(n.path("description").asText).deepCopy[com.fasterxml.jackson.databind.node.ObjectNode]()
+   metadata.put("center","shared")
    if(n.path("kind").asText=="product"){
     metadata.put("product_id",n.path("id").asText.stripPrefix("result-"))
     metadata.put("published_at",n.path("created_at").asText)

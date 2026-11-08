@@ -1,5 +1,7 @@
 # Configuration-driven applications
 
+Table previews display at most 10 data rows. The caption reports the total row count and preview size. Full result downloads retain all rows.
+
 Published applications are listed on the **Application services** page (`/services/`), accessible from the primary navigation. The homepage focuses on the collaboration network and data centers.
 
 [中文](appbuilder_zh.md) · [Home](../README.md)

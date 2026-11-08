@@ -52,7 +52,9 @@ final class Web(settings:Settings) extends AutoCloseable {
  private def handleApplication(x:HttpExchange,service:conet.appbuilder.ApplicationService,path:String):Unit={
   if(uploadInput(x,service,path))return
   val publication="^/api/jobs/([a-zA-Z0-9-]{1,100})/publication$".r
+  val plan="^/api/jobs/([a-zA-Z0-9-]{1,100})/plan$".r
   path match {
+   case plan(id) if x.getRequestMethod=="GET"=>json(x,200,PlanNarrative(service.plan(id),settings,catalog));return
    case publication(id) if x.getRequestMethod=="GET"=>json(x,200,products.defaults(service,id));return
    case publication(id) if x.getRequestMethod=="POST"=>val body=Support.copy(requestBody(x,262144));body.put("publisher_name","CONET");storage.captureRun(service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集");val published=products.publish(service,id,body,node.path("url").asText);val productId=published.path("id").asText;try{storage.publishProduct(productId,products)}catch{case NonFatal(e)=>products.revoke(productId);throw e};json(x,201,published);return
    case _=>()
@@ -83,7 +85,7 @@ final class Web(settings:Settings) extends AutoCloseable {
    path match{case "/api/catalog/refresh"=>json(x,200,catalog.list(true));case "/api/catalog/items"=>json(x,200,catalog.items(name,item));case "/api/catalog/preview"=>json(x,200,catalog.preview(name,item));case "/api/catalog/presign"=>json(x,200,catalog.presign(name,item));case _=>json(x,404,Support.obj.put("error","未找到资源"))};return
   }
   if(path=="/appbuilder"||path=="/appbuilder/"){if(x.getRequestMethod=="GET")builderAsset(x,"builder.html")else json(x,405,Support.obj.put("error","不支持该方法"));return}
-  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("workspace.js","workspace.css","builder.js","assistant.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
+  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("analysis-process.js","workspace.js","workspace.css","builder.js","assistant.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
   if(path.startsWith("/appbuilder/media/")&&x.getRequestMethod=="GET"){applications.media(path.stripPrefix("/appbuilder/media/")) match{case Some(p)=>file(x,p);case None=>json(x,404,Support.obj.put("error","未找到展示图片"))};return}
   if(path.startsWith("/api/storage/")){
    val action=path.stripPrefix("/api/storage/")
@@ -130,6 +132,7 @@ final class Web(settings:Settings) extends AutoCloseable {
    else if(path.startsWith("/api/appbuilder/apps/")&&x.getRequestMethod=="GET")applications.document(path.stripPrefix("/api/appbuilder/apps/")) match{case Some(n)=>val doc=Support.copy(n).put("can_edit",true);json(x,200,doc);case None=>json(x,404,Support.obj.put("error","未找到应用"))}
    else json(x,404,Support.obj.put("error","未找到资源"));return
   }
+  if(path=="/api/analyses"&&x.getRequestMethod=="GET"){json(x,200,applications.history(products.list));return}
   if(path=="/api/products"&&x.getRequestMethod=="GET"){json(x,200,products.list);return}
   if(path.startsWith("/products/")){
    x.getResponseHeaders.set("X-Robots-Tag","noindex")

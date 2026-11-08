@@ -18,6 +18,13 @@ final class Applications(settings:Settings,cases:Map[String,CaseService],inputFi
  private def create(d:Definition)=new ApplicationService(d,settings.state.resolve("appbuilder/runs").resolve(d.id),()=>manifest(d),new UnionBackend(()=>settings.connection),s"/apps/${d.id}",inputFiles)
  private def revision(d:Definition):String=java.security.MessageDigest.getInstance("SHA-256").digest((xstream.util.YamlDocument.dump(Values.copy(d.config).put("job","job.yaml"))+d.jobYaml).getBytes(java.nio.charset.StandardCharsets.UTF_8)).map(b=>f"${b&255}%02x").mkString
  def activeRunKeys:Set[(String,String)]=synchronized{services.values.flatMap(s=>s.records.filter(r=>Set("queued","running")(r.path("state").asText)).map(r=>s.id->r.path("id").asText)).toSet}
+ def history(publications:JsonNode):JsonNode=synchronized{
+  val published=publications.elements.asScala.toVector.groupBy(m=>m.path("application").path("id").asText->m.path("run_id").asText)
+  Values.array(services.values.toVector.flatMap{s=>s.list.elements.asScala.map{run=>
+   val n=Values.copy(run);n.put("app_id",s.id).put("app_title",s.definition.config.path("title").asText).put("app_description",s.definition.config.path("description").asText).put("app_url",s"/apps/${s.id}/").put("url",s"/apps/${s.id}/?run="+run.path("id").asText)
+   n.set[JsonNode]("publications",Values.array(published.getOrElse(s.id->run.path("id").asText,Vector.empty).map{m=>Values.obj.put("product_id",m.path("product_id").asText).put("published_at",m.path("published_at").asText).put("dataset_uri",m.path("dataset_uri").asText).put("url","/products/"+m.path("product_id").asText+"/")}));n
+  }}.sortBy(_.path("created_at").asText).reverse)
+ }
  def captureResults(storage:HostedStorage):Unit=synchronized{services.values.foreach{s=>s.records.filter(_.path("state").asText=="succeeded").foreach{r=>try storage.captureRun(s,r.path("id").asText)catch{case scala.util.control.NonFatal(e)=>System.err.println("Result archive failed: "+e.getMessage)}}}}
  def statistics:JsonNode=synchronized{conet.appbuilder.Usage.aggregate(services.values.toVector.flatMap(_.records))}
  def statisticsFor(ids:Set[String]):JsonNode=synchronized{conet.appbuilder.Usage.aggregate(services.values.filter(s=>ids(s.id)).toVector.flatMap(_.records))}

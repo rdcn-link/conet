@@ -16,7 +16,7 @@ class WebWorkspaceSpec extends AnyFunSuite {
    assert(call("/api/account/login",Some("{}")).statusCode==404)
    assert(call("/api/appbuilder/apps").statusCode==200)
    for(p<-Seq("/api/workspaces","/api/workspaces/resources")){assert(call(p).statusCode==404);assert(call(p,Some("{}")).statusCode==404)}
-   assert(call("/api/products").body=="[]")
+   assert(call("/api/products").body=="[]");assert(call("/api/analyses").body=="[]")
    assert(call("/api/storage/upload",Some("""{"path":"sample.txt","content_base64":"aGVsbG8="}""")).statusCode==201)
    assert(call("/api/storage/list",Some("{}"),space="unused").body.contains("sample.txt"))
    assert(call("/api/storage/list",Some("{}")).body.contains("sample.txt"))

@@ -1,5 +1,15 @@
 # Publish and share analysis products
 
+Product pages provide section links for the dataset, results, execution records and rights. Inputs and result summaries sit side by side on wide screens; identifiers, contribution details, detailed permissions, limitations and publication management expand on demand. The process DAG and its prose explanation appear side by side on wide screens and stack on mobile. Result tables preview at most ten rows.
+
+Process descriptions expand version-specific operator explanations from `config/process-descriptions.yaml` (override with `appbuilder.process_descriptions`). Templates use JSON pointers such as `{{/params/min_snr}}` and `{{/source_summary}}`. Read steps identify the node, dataset and Item from the saved URI and catalog metadata; unavailable metadata falls back to the recorded URI. Explanations are grouped by dependency stage and never change the executed Job. Operators without detailed descriptions are explicitly identified as undocumented rather than assigned invented behavior.
+
+The analysis-process section shows the variable-resolved Job DAG and a deterministic prose summary of its dependency stages, plus execution-node names. The App link appears in the analysis conditions and execution records section. Node identities and sub-job identifiers are omitted from this section.
+
+The “撤回发布” action withdraws the published dataset and product page while preserving the original analysis history and archive. Previously downloaded copies remain with their recipients.
+
+Both the data catalog and workspace open the same product detail page. Its upper section uses the shared dataset browser: description, DACP/S3 addresses, metadata, folders, Items and bounded previews. The lower section adds visualized results, analysis conditions, execution records, provenance, rights and publication management. Original datasets use the dataset browser alone.
+
 [中文](products_zh.md) · [App Builder](appbuilder.md)
 
 An application is a reusable analysis form. An **analysis product** is the fixed result of one successful run, with its conditions, provenance, artifacts and rights declaration. Editing the application later does not change a published product.

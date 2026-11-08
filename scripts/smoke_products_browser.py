@@ -30,7 +30,7 @@ async def run(args):
   public=await browser.new_context(viewport={'width':1440,'height':1000});visitor=await public.new_page();visitor.on('pageerror',lambda e:errors.append(str(e)))
   await visitor.goto(base+url);await visitor.wait_for_function('document.querySelector("#product-title").textContent!=="正在加载分析结果…"')
   await visitor.wait_for_selector('#views section')
-  assert (await visitor.locator('#dataset-uri').inner_text()).startswith('dacp://')
+  assert 'dacp://' in await visitor.locator('#detail').inner_text()
   assert await visitor.get_by_text('应用工作台',exact=True).count()==0
   assert await visitor.locator('#product-downloads a[href$="matches.csv"]').count()==1
   denied=await visitor.request.get(base+url+'files/analysis.json');assert denied.status==403

@@ -1,4 +1,8 @@
-# Union data catalog
+# Data catalog
+
+Original datasets and the dataset section of analysis products use the same browser component and shared detail styles, including addresses, metadata, Item listings and preview controls.
+
+Filter datasets by their publishing node, combined with category and text search. Each card shows its node. Node attribution comes from the catalog metadata; unrecognized nodes are labeled explicitly.
 
 The **Node list** page (`/nodes/`) shows the data centers and shared center, including connection status, dataset summaries, data volume and reported resource metrics.
 

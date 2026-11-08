@@ -93,7 +93,7 @@ limits: {max_queued: 2, max_result_bytes: 1024}
  test("successful jobs persist history and deduplicate application, dataset, operator and node statistics"){
   val state=Files.createTempDirectory("builder-job-");val s=new ApplicationService(definition,state,()=>manifest,new Backend,"/apps/example")
   val id=try{val(code,n)=s.submit(manifest);assert(code==202);val done=await(s,n.path("id").asText);assert(done.path("state").asText=="succeeded",done.toString);assert(done.path("summary").path("rows").asInt==2)
-   assert(s.artifact(done.path("id").asText,"rows.csv").exists(Files.isRegularFile(_)));
+   assert(done.path("resolved_job_yaml").isTextual);assert(!s.plan(done.path("id").asText).path("yaml").asText.contains("$SOURCE"));assert(s.artifact(done.path("id").asText,"rows.csv").exists(Files.isRegularFile(_)));
    val metadata=Json.mapper.readTree(Files.readAllBytes(s.artifact(done.path("id").asText,"metadata.json").get));assert(metadata.path("state").asText=="succeeded");assert(metadata.path("artifacts").size==2);assert(metadata.path("sources").size==1);assert(s.artifact(done.path("id").asText,"report.md").exists(Files.isRegularFile(_)));
    assert(s.artifact(done.path("id").asText,"../variables.yaml").isEmpty)
    val stats=Usage.aggregate(s.records);assert(stats.path("submissions").asInt==1);assert(stats.path("datasets").get(0).path("count").asInt==1);assert(stats.path("operators").size==2);assert(stats.path("nodes").get(0).path("count").asInt==1);done.path("id").asText

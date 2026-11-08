@@ -97,4 +97,4 @@ CONET 不管理其他独立运行的 DACP、Union 或官网服务，启动时也
 
 先设计流程，再配置表单、变量绑定和结果视图。应用以可导入导出的[应用程序包](docs/application-packages_zh.md)交付。[文件输入](docs/file-inputs_zh.md)将受限浏览器上传绑定到独立运行的 DACP Item。`examples/uploaded-csv/` 提供 CSV 预览、字段统计和下载。CONET 包含八个 Node 成员：七个科学数据中心与一个共享托管中心，由单独的 Union 协调。
 
-[联合数据目录](docs/catalog_zh.md) · 浏览入口 `/catalog/`。
+[数据目录](docs/catalog_zh.md) · 浏览入口 `/catalog/`。

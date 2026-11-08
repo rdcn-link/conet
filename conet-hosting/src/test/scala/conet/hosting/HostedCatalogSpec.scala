@@ -19,7 +19,7 @@ class HostedCatalogSpec extends AnyFunSuite {
   val descriptor=root.resolve("publications/public.json");val n=mapper.createObjectNode().put("published",false).put("directory","spaces/alice/published/test").put("description","{\"title\":\"样例\",\"description\":\"说明\"}")
   try{
    Files.writeString(root.resolve("private.txt"),"secret");Files.writeString(descriptor,n.toString);assert(catalog.list().isEmpty)
-   n.put("published",true);Files.writeString(descriptor,n.toString);assert(catalog.list().map(_.name)==Seq("public"))
+   n.put("published",true);Files.writeString(descriptor,n.toString);assert(catalog.list().map(_.name)==Seq("public"));assert(mapper.readTree(catalog.list().head.description).path("center").asText=="shared")
    val dataset=catalog.open("public");val access=dataset.open(()=>());assert(access.list().exists(_.path=="/sample.txt"))
    n.put("kind","product").put("id","result-demo").put("created_at","2026-11-08T08:00:00Z");Files.writeString(descriptor,n.toString)
    val product=mapper.readTree(catalog.list().head.description);assert(product.path("product_id").asText=="demo");assert(product.path("published_at").asText=="2026-11-08T08:00:00Z")

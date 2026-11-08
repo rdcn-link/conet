@@ -63,8 +63,16 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
  if(Files.isDirectory(state.resolve("web-jobs")))Using.resource(Files.list(state.resolve("web-jobs"))){files=>files.iterator.asScala.filter(_.toString.endsWith(".json")).foreach{p=>val j=Values.copy(Json.mapper.readTree(Files.readAllBytes(p)));j.put("app_id",id);require(j.path("id").asText.matches("[a-zA-Z0-9-]{1,100}"),"任务记录编号无效");if(Set("queued","running")(j.path("state").asText)){j.put("state","interrupted").put("error","应用服务已重启，请先在 Union 看板核对原任务再决定是否重新提交");save(j)};jobs(j.path("id").asText)=j}}
  def config:JsonNode={val n=Values.obj.put("job_yaml",definition.jobYaml);n.set[JsonNode]("application",definition.publicConfig);n.set[JsonNode]("manifest",manifest());n.set[JsonNode]("web_urls",backend.webUrls);n}
  def records:Vector[JsonNode]=synchronized{jobs.values.toVector.map(Values.copy)}
- def list:JsonNode=synchronized{Values.array(jobs.values.toVector.sortBy(_.path("created_at").asText).reverse.map{j=>val n=Values.copy(j);n.remove("result");n.remove("execution");n.remove("definition");n.remove("job_yaml");n})}
+ def list:JsonNode=synchronized{Values.array(jobs.values.toVector.sortBy(_.path("created_at").asText).reverse.map{j=>val n=Values.copy(j);n.remove("result");n.remove("execution");n.remove("definition");n.remove("job_yaml");n.remove("resolved_job_yaml");n})}
  def get(identifier:String):Option[JsonNode]=synchronized{jobs.get(identifier).map(Values.copy)}
+ def plan(identifier:String):JsonNode={
+  val run=get(identifier).getOrElse(throw new IllegalArgumentException("分析记录不存在"))
+  val yaml=if(run.path("resolved_job_yaml").isTextual)run.path("resolved_job_yaml").asText else{
+   require(run.path("job_yaml").isTextual&&run.path("variables").isObject,"该分析尚无已填充变量的 Job 快照")
+   WorkflowVariables.resolve(run.path("job_yaml").asText,run.path("variables"))
+  }
+  val out=Values.obj.put("yaml",yaml);out.set[JsonNode]("job",YamlDocument.parse(yaml));out
+ }
  def active:Boolean=synchronized{jobs.values.exists(j=>Set("queued","running")(j.path("state").asText))}
  private def update(identifier:String)(f:ObjectNode=>Unit):Unit=synchronized{val j=jobs(identifier);f(j);save(j)}
  def upload(field:String,name:String,stream:java.io.InputStream):JsonNode=inputFiles.upload(definition,field,name,stream)
@@ -88,7 +96,7 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
    control.check();val vars=definition.variables(job,m,datasets)
    val resolved=YamlDocument.parse(WorkflowVariables.resolve(definition.jobYaml,vars))
    val bindings=Values.array(datasets.toVector.map{case(name,uri)=>val n=Values.obj.put("name",name).put("uri",uri);val ids=resolved.path("steps").elements.asScala.filter(s=>s.path("operator").asText.startsWith("read_item@")&&s.path("params").path("uri").asText.startsWith(uri.stripSuffix("/")+"/")).map(s=>Json.mapper.getNodeFactory.textNode(s.path("id").asText)).toVector;n.set[JsonNode]("steps",Values.array(ids));n})
-   update(identifier)(_.set[JsonNode]("dataset_bindings",bindings))
+   update(identifier){j=>j.set[JsonNode]("dataset_bindings",bindings);j.set[JsonNode]("variables",vars);j.put("resolved_job_yaml",YamlDocument.dump(resolved))}
    val raw=backend.execute(definition.jobYaml,vars,definition.config.path("limits").path("max_result_bytes").asLong(8L*1024*1024),control,
     executionId=>update(identifier){j=>if(!control.cancelled.get())j.put("job_id",executionId).put("state","running").put("started_at",now);j.set[JsonNode]("variables",vars)},
     status=>update(identifier){j=>Usage.observe(j,status);j.set[JsonNode]("execution",status);j.put("updated_at",now)})

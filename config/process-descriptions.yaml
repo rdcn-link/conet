@@ -1,0 +1,23 @@
+operators:
+  observatory_select@1.0: >-
+    对{{/source_summary}}开展单波段星表筛选。以 ICRS 赤经 {{/params/cone/0}}°、赤纬 {{/params/cone/1}}° 为中心，选择角半径 {{/params/cone/2}}° 内的天体；剔除质量标记异常、通量或通量误差无效的记录，并要求信噪比不低于 {{/params/min_snr}}。根据星等零点及校正量将通量转换为校准星等，同时计算星等误差，输出天体编号、位置、星等和信噪比，供下游跨波段匹配使用
+  observatory_crossmatch@1.0: >-
+    汇合 g、r、i 三个波段的筛选结果，在球面坐标上进行交叉匹配，匹配半径为 {{/params/match_radius_arcsec}} 角秒。保留唯一且相互一致的匹配，排除缺少 r/i 波段及存在歧义的对象，并验证三对波段的位置间距均满足阈值。计算 g−r、r−i 颜色及误差，输出匹配星表、颜色—颜色分布和未匹配统计；按示例颜色阈值标注红色、蓝色候选及恒星轨迹。这些类别仅用于合成数据演示，不构成物理天体鉴定
+  check_dam_terrain@1.1: >-
+    从{{/source_summary}}提取研究区相关的高程、集水区栅格与沟道拓扑。计算沟道上下游高差与长度之比，并将流域高程分为 {{/params/entropy_bins}} 个区间计算归一化地貌信息熵，输出带比降和信息熵的沟道特征
+  check_dam_susceptibility@1.1: >-
+    根据上游沟道特征选择比降处于 {{/params/min_slope_ratio}} 至 {{/params/max_slope_ratio}}、信息熵低于 {{/params/max_entropy}} 的易发沟道种子，沿下游拓扑最多追溯 {{/params/max_downstream_hops}} 次，生成山洪易发沟道的 HydroID 集合
+  check_dam_detect@1.1: >-
+    对{{/source_summary}}中的研究区影像开展合成淤地坝目标检测，要求置信度不低于 {{/params/min_confidence}}，并按 {{/params/duplicate_distance_m}} 米距离去除重复候选，输出疑似坝体的地理坐标和置信度，供空间叠加筛选使用
+  check_dam_overlap@1.1: >-
+    将疑似淤地坝坐标与沟道栅格及山洪易发 HydroID 集合进行空间叠加，在像素位置周围采用偏移量 {{/params/bias}} 的邻域窗口寻找对应沟道，保留位于易发沟道且落在用户选择多边形内的有效坝体位置
+  check_dam_map@1.1: >-
+    将上游筛选得到的有效淤地坝坐标组织为分布图与结果数据，附带所选研究区范围和数量统计，用于地图展示与成果下载
+  emergency_terrain@1.0: >-
+    读取{{/source_summary}}中的研究区地形信息，提取高程及坡度约束，为灾情影响判断提供地形背景，并记录缺失或过期数据情况
+  emergency_imagery@1.0: >-
+    对{{/source_summary}}中的灾前、灾后遥感观测开展变化分析，提取研究区影像变化特征，为疑似灾情范围识别提供证据
+  emergency_hydrology@1.0: >-
+    对{{/source_summary}}中的研究区降雨与水系信息进行汇总，计算水文背景约束，为多源灾情融合提供输入
+  emergency_fusion@1.0: >-
+    汇合地形约束、影像变化、水文背景及道路聚落和应急设施数据，采用变化阈值 {{/params/change_threshold}} 在所选区域开展融合判断，输出疑似影响范围、暴露要素统计及数据完整性提示。结果基于合成数据，仅用于协作分析演示

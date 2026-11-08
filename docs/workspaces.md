@@ -1,6 +1,10 @@
 # Workspace and shared hosting
 
-CONET is a single-user system. Open `/workspace/` to view all published apps and analysis products under “我发布的app” and “我发布的分析产品”. Apps, runs and products belong to the same user. Publication cards show their DACP URI and publication time. No login or workspace selection is required.
+Analysis history is grouped by App with its description and link. Filter by execution and publication status, then open a run to inspect its variable-resolved Job DAG. The snapshot uses the run's saved template and values, independently of later App edits. New runs save the resolved Job before submission; runs without resolved values report that no completed snapshot is available.
+
+Each analysis history entry identifies its App by name, identifier and description, with a link to open the App and a separate link to that specific run.
+
+CONET is a single-user system. Open `/workspace/` to view published apps and the complete analysis history under “我发布的app” and “我发起的数据分析”. Apps, runs and products belong to the same user. History cards show execution state and associated active publications with DACP URI and publication time. Successful unpublished runs can be published directly from history. No login or workspace selection is required.
 
 ## Storage and publication
 
@@ -40,6 +44,7 @@ bin/conet hosting-status
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/appbuilder/apps` | Published apps |
+| `GET /api/analyses` | All analysis history with associated active publications |
 | `GET /api/products` | Active published analysis products |
 | `GET /api/storage/summary`, `/datasets`, `/results` | Capacity, dataset drafts and read-only archives |
 | `POST /api/storage/list`, `/mkdir`, `/upload`, `/download`, `/delete` | File operations; each path uses the `/api/storage` prefix |

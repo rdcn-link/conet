@@ -9,7 +9,7 @@ async def main():
   assert await page.locator('#workspace-select,#create-workspace,#space-panel').count()==0
   apps=await(await page.request.get(base+'/api/appbuilder/apps')).json();products=await(await page.request.get(base+'/api/products')).json()
   assert await page.locator('#resources .card').count()==len(apps)
-  await page.get_by_role('button',name='我发布的分析产品',exact=True).click();assert await page.locator('#my-results .card').count()==len(products)
+  await page.get_by_role('button',name='我发起的数据分析',exact=True).click();history=await(await page.request.get(base+'/api/analyses')).json();assert await page.locator('#my-results .card').count()==min(20,len(history))
   for path in ['/api/workspaces','/api/workspaces/resources','/api/account','/appbuilder/assets/workspace-context.js']:
    assert (await page.request.get(base+path)).status==404
   assert (await page.request.post(base+'/api/workspaces',data={'name':'removed'})).status==404
