@@ -68,6 +68,17 @@ centers:
    val cloned=Support.copy(document);cloned.put("application_yaml",document.path("application_yaml").asText.replace("id: check-dams","id: published-test"));cloned.remove("revision")
    assert(request("/api/appbuilder/apps",Some(cloned.toString)).statusCode==201)
    assert(request("/apps/published-test/").statusCode==200)
+   val publishedDocument=Json.mapper.readTree(request("/api/appbuilder/apps/published-test").body)
+   val stateBody=Support.obj.put("revision",publishedDocument.path("revision").asText).put("status","offline")
+   assert(request("/api/appbuilder/apps/published-test/status",Some(stateBody.toString),Some("https://other.example")).statusCode==403)
+   assert(request("/api/appbuilder/apps/published-test/status",Some(stateBody.toString)).statusCode==200)
+   assert(request("/apps/published-test/").statusCode==410)
+   assert(request("/apps/published-test/api/jobs",Some("{}")).statusCode==410)
+   assert(!Json.mapper.readTree(request("/api/config").body).path("applications").toString.contains("published-test"))
+   stateBody.put("status","online")
+   assert(request("/api/appbuilder/apps/published-test/status",Some(stateBody.toString)).statusCode==200)
+   assert(request("/apps/published-test/").statusCode==200)
+
    assert(request("/api/appbuilder/apps",Some(cloned.toString)).statusCode==400)
    assert(request("/api/appbuilder/statistics").statusCode==200)
    val converted=Json.mapper.readTree(request("/api/appbuilder/convert",Some(Support.obj.put("application",document.path("application_yaml").asText).put("job",document.path("job_yaml").asText).toString)).body)
@@ -86,6 +97,10 @@ centers:
    assert(request("/apps/check-dams/results/old/connection.json").statusCode==404)
    assert(request("/api/union-jobs/../../secret").statusCode==400)
    assert(web.snapshot().path("center_volumes").path("a").path("data_bytes").asLong==5)
+   assert(request("/api/appbuilder/apps/published-test/delete",Some(stateBody.toString)).statusCode==200)
+   assert(request("/apps/published-test/").statusCode==410)
+   assert(request("/api/appbuilder/apps/published-test").statusCode==404)
+
   }finally web.close()
  }
  test("dataset configuration cannot escape the case data directory"){

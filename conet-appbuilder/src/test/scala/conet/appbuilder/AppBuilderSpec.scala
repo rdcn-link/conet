@@ -105,6 +105,24 @@ limits: {max_queued: 2, max_result_bytes: 1024}
   val s=new ApplicationService(definition,Files.createTempDirectory("builder-cancel-"),()=>manifest,backend,"/apps/example")
   try{val first=s.submit(manifest)._2.path("id").asText;assert(entered.await(3,TimeUnit.SECONDS));val second=s.submit(manifest)._2.path("id").asText;assert(s.submit(manifest)._1==429);s.cancel(second);s.cancel(first);assert(await(s,first).path("state").asText=="cancelled");assert(await(s,second).path("state").asText=="cancelled");assert(s.artifact(second,"analysis.json").isEmpty)}finally s.close()
  }
+ test("shared admission rejects across apps and rechecks disk before queued execution"){
+  val free=new java.util.concurrent.atomic.AtomicLong(1000)
+  val scheduler=new AnalysisScheduler(1,1,100,_=>free.get())
+  val entered=new CountDownLatch(1);val release=new CountDownLatch(1)
+  val calls=new java.util.concurrent.atomic.AtomicInteger()
+  val backend=new Backend{override def execute(j:String,v:JsonNode,l:Long,c:JobControl,start:String=>Unit,status:JsonNode=>Unit):Array[Byte]={calls.incrementAndGet();start("running");entered.countDown();assert(release.await(5,TimeUnit.SECONDS));c.check();result}}
+  def service(name:String)=new ApplicationService(Definition.parse(config.replace("id: example","id: "+name),job),Files.createTempDirectory("shared-app-"),()=>manifest,backend,"/apps/"+name,sharedScheduler=Some(scheduler))
+  val a=service("first");val b=service("second");val c=service("third")
+  try{
+   assert(a.submit(manifest)._1==202);assert(entered.await(3,TimeUnit.SECONDS))
+   val queued=b.submit(manifest);assert(queued._1==202)
+   assert(c.submit(manifest)._1==429);assert(c.records.isEmpty)
+   free.set(0);assert(c.submit(manifest)._1==507);assert(c.records.isEmpty)
+   release.countDown()
+   val failed=await(b,queued._2.path("id").asText)
+   assert(failed.path("state").asText=="failed");assert(failed.path("error").asText.contains("存储空间不足"));assert(calls.get()==1)
+  }finally{release.countDown();a.close();b.close();c.close();scheduler.close()}
+ }
  test("retry observations count each invocation while node polling remains idempotent"){
   val record=Values.obj.put("id","job").put("app_id","example");record.set[JsonNode]("step_operators",json("""{"source":"read_item@1.0","process":"example@1.0"}"""))
   val first=json("""{"attempt_id":"one","steps":[{"id":"process","state":"running"}],"nodes":{"n":{"execution_id":"one"}}}""")

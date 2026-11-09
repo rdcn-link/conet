@@ -95,6 +95,30 @@ object Definition {
   }
   val references=referencesIn(job)
   require(references.subsetOf(definition.variableBindings.keySet),"Job 存在未绑定变量："+(references--definition.variableBindings.keySet).toVector.sorted.mkString(", "))
+  val page=n.path("presentation").path("page")
+  if(!page.isMissingNode){
+   require(page.isObject,"页面设计必须为对象")
+   val enums=Map("layout"->Set("split","stacked","wide"),"hero"->Set("banner","compact","centered"),"surface"->Set("soft","outlined","elevated"),"density"->Set("comfortable","compact"))
+   require(page.fieldNames.asScala.forall(k=>enums.contains(k)||Set("accent","heading","intro","input_labels","input_hints","input_order","theme","background","cover")(k)),"未知页面设计字段")
+   enums.foreach{case(k,values)=>require(page.path(k).isTextual&&values(page.path(k).asText),"页面设计字段无效："+k)}
+   if(page.has("theme"))require(page.path("theme").isTextual&&Set("coast","forest","indigo","amber","rose")(page.path("theme").asText),"未知页面主题")
+   Seq("background","cover").foreach{k=>val image=page.path(k);if(!image.isMissingNode && !image.isNull)require(image.isTextual&&image.asText.startsWith("/assets/") && !image.asText.contains("..") && !image.asText.exists(c=>c=='?'||c=='#'||c=='\\'),"页面图片须为本地资源："+k)}
+   require(page.path("accent").asText.matches("#[0-9a-fA-F]{6}"),"页面强调色无效")
+   Seq("heading"->80,"intro"->400).foreach{case(k,max)=>require(page.path(k).isTextual&&page.path(k).asText.length<=max,"页面文字过长或无效："+k)}
+  }
+  def inputPaths(fields:Vector[JsonNode],prefix:String=""):Set[String]=fields.flatMap{f=>val key=prefix+f.path("name").asText;Set(key)++inputPaths(f.path("fields").elements.asScala.toVector,key+".")}.toSet
+  val paths=inputPaths(definition.inputs)
+  Seq("input_labels"->80,"input_hints"->240).foreach{case(key,max)=>
+   val map=page.path(key)
+   if(!map.isMissingNode)require(map.isObject&&map.fields.asScala.forall(e=>paths(e.getKey)&&e.getValue.isTextual&&e.getValue.asText.length<=max),"页面输入说明无效："+key)
+  }
+  val order=page.path("input_order")
+  if(!order.isMissingNode)require(order.isArray&&order.size==definition.inputs.size&&order.elements.asScala.forall(_.isTextual)&&order.elements.asScala.map(_.asText).toSet==definition.inputs.map(_.path("name").asText).toSet,"页面输入顺序必须包含全部顶层输入且不重复")
+  val design=n.path("presentation").path("design")
+  if(!design.isMissingNode){
+   val enums=Map("layout"->Set("split","stacked","wide"),"hero"->Set("banner","compact","centered"),"surface"->Set("soft","outlined","elevated"),"density"->Set("comfortable","compact"))
+   require(design.isObject&&design.fields.asScala.forall(e=>enums.get(e.getKey).exists(v=>e.getValue.isTextual&&v(e.getValue.asText))),"结构化页面设计配置无效")
+  }
   val theme=n.path("presentation").path("theme")
   if(!theme.isMissingNode)require(theme.isTextual && Set("coast","forest","indigo","amber","rose")(theme.asText),"未知应用主题")
   Seq("cover","background").foreach { key=>

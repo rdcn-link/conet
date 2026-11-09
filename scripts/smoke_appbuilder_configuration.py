@@ -28,12 +28,15 @@ async def run(args):
   await edit('observatory')
   assert await page.locator('.design-nav').count()==0
   await page.locator('[data-editor=basic]').click()
+  assert await page.locator('.theme-card').count()==0
+  await page.locator('#open-preview').click()
+  await page.locator('.theme-card').first.wait_for()
   assert await page.locator('.theme-card').count()==5
   await page.get_by_role('radio',name='珊瑚红',exact=True).check()
+  await page.locator('#auto-settings-generate').click()
+  await page.wait_for_function("document.querySelector('#preview-panel').open && !document.querySelector('#open-preview').disabled")
+  await page.locator('#close-preview').click()
   data=await parsed();assert data['application']['presentation']['theme']=='rose'
-  await page.locator('[data-editor=basic]').click()
-  assert await page.get_by_role('radio',name='珊瑚红',exact=True).is_checked()
-  await page.get_by_role('radio',name='星空靛',exact=True).check()
   await page.locator('[data-editor=inputs]').click()
   assert await page.get_by_role('radio',name='观测天区',exact=True).count()==1
   assert await page.locator('.value-type').count()==0

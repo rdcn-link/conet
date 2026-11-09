@@ -17,9 +17,10 @@ final class Web(settings:Settings) extends AutoCloseable {
  private val applications=new Applications(settings,cases,uploads)
  private val catalog=new CatalogGateway(settings)
  private val packages=new ApplicationPackages(applications)
- private val applicationChat=new ApplicationChat(settings,applications)
+ private val pageGenerator=new ApplicationPageGenerator(settings,applications)
  private val storage=new HostedStorage(settings)
  private val products=new Products(settings)
+ private val ratings=new Ratings(settings.root.resolve(".state"))
  private def submitter(x:HttpExchange):Option[JsonNode]=None
  private def submitted(x:HttpExchange,app:String,result:(Int,JsonNode)):Unit={val(code,value)=result;json(x,code,value)}
  private val workers=Executors.newFixedThreadPool(16)
@@ -50,6 +51,7 @@ final class Web(settings:Settings) extends AutoCloseable {
   if(in==null)json(x,404,Support.obj.put("error","未找到资源"))else{val bytes=try in.readAllBytes()finally in.close();send(x,200,bytes,mime(Path.of(name)))}
  }
  private def handleApplication(x:HttpExchange,service:conet.appbuilder.ApplicationService,path:String):Unit={
+  if(!applications.visible(service.id) && (path=="/"||path=="/api/config"||path=="/api/jobs"&&x.getRequestMethod=="POST"||path=="/api/preview"||path.startsWith("/api/uploads/"))){json(x,410,Support.obj.put("error","应用已下线或删除"));return}
   if(uploadInput(x,service,path))return
   val publication="^/api/jobs/([a-zA-Z0-9-]{1,100})/publication$".r
   val plan="^/api/jobs/([a-zA-Z0-9-]{1,100})/plan$".r
@@ -69,15 +71,29 @@ final class Web(settings:Settings) extends AutoCloseable {
    case _=>json(x,404,Support.obj.put("error","未找到资源"))
   }else if(method=="POST"){
    checkOrigin(x)
-   if(path=="/api/jobs"){submitted(x,service.id,service.submit(requestBody(x),submitter(x)))}
+   if(path=="/api/jobs"){submitted(x,service.id,applications.whileOnline(service.id){service.submit(requestBody(x),submitter(x))})}
    else if(path=="/api/preview")json(x,200,service.preview(requestBody(x)))
    else if(path.startsWith("/api/jobs/")&&path.endsWith("/cancel")){service.cancel(path.stripPrefix("/api/jobs/").stripSuffix("/cancel")) match{case Some(j)=>json(x,200,j);case None=>json(x,404,Support.obj.put("error","未找到任务"))}}
    else json(x,404,Support.obj.put("error","未找到资源"))
   }else json(x,405,Support.obj.put("error","不支持该方法"))
  }
- private val portalFiles=Map("/nodes"->"nodes.html","/nodes/"->"nodes.html","/services"->"services.html","/services/"->"services.html","/assets/background-coast.svg"->"assets/background-coast.svg","/assets/background-forest.svg"->"assets/background-forest.svg","/assets/background-indigo.svg"->"assets/background-indigo.svg","/assets/background-amber.svg"->"assets/background-amber.svg","/assets/background-rose.svg"->"assets/background-rose.svg","/catalog"->"catalog.html","/catalog/"->"catalog.html","/catalog.js"->"catalog.js","/catalog.css"->"catalog.css","/navigation.css"->"navigation.css","/"->"index.html","/screen"->"screen.html","/screen/"->"screen.html","/style.css"->"style.css","/app.js"->"app.js","/screen-panels.js"->"screen-panels.js","/screen.js"->"screen.js","/screen.css"->"screen.css","/job-plan"->"job-plan.html","/job-plan.js"->"job-plan.js","/job-plan.css"->"job-plan.css","/assets/tianditu.js"->"assets/tianditu.js","/assets/earth.jpg"->"assets/earth.jpg","/assets/conet-mark.svg"->"assets/conet-mark.svg","/assets/app-cover.svg"->"assets/app-cover.svg","/assets/check-dams-cover.svg"->"assets/check-dams-cover.svg","/assets/observatory-cover.svg"->"assets/observatory-cover.svg","/assets/emergency-cover.svg"->"assets/emergency-cover.svg")
+ private val portalFiles=Map("/ratings.js"->"ratings.js","/ratings.css"->"ratings.css","/nodes"->"nodes.html","/nodes/"->"nodes.html","/services"->"services.html","/services/"->"services.html","/assets/background-coast.svg"->"assets/background-coast.svg","/assets/background-forest.svg"->"assets/background-forest.svg","/assets/background-indigo.svg"->"assets/background-indigo.svg","/assets/background-amber.svg"->"assets/background-amber.svg","/assets/background-rose.svg"->"assets/background-rose.svg","/catalog"->"catalog.html","/catalog/"->"catalog.html","/catalog.js"->"catalog.js","/catalog.css"->"catalog.css","/navigation.css"->"navigation.css","/"->"index.html","/screen"->"screen.html","/screen/"->"screen.html","/style.css"->"style.css","/app.js"->"app.js","/screen-panels.js"->"screen-panels.js","/screen.js"->"screen.js","/screen.css"->"screen.css","/job-plan"->"job-plan.html","/job-plan.js"->"job-plan.js","/job-plan.css"->"job-plan.css","/assets/tianditu.js"->"assets/tianditu.js","/assets/earth.jpg"->"assets/earth.jpg","/assets/conet-mark.svg"->"assets/conet-mark.svg","/assets/app-cover.svg"->"assets/app-cover.svg","/assets/check-dams-cover.svg"->"assets/check-dams-cover.svg","/assets/observatory-cover.svg"->"assets/observatory-cover.svg","/assets/emergency-cover.svg"->"assets/emergency-cover.svg")
+ private def ratingBrowser(x:HttpExchange):String={
+  val existing=Option(x.getRequestHeaders.getFirst("Cookie")).toVector.flatMap(_.split(";")).map(_.trim).find(_.startsWith("conet-rating=")).map(_.stripPrefix("conet-rating="))
+  existing.filter(_.matches("[A-Za-z0-9-]{36}")).getOrElse{
+   val id=java.util.UUID.randomUUID().toString
+   x.getResponseHeaders.add("Set-Cookie","conet-rating="+id+"; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax"+(if(x.isInstanceOf[com.sun.net.httpserver.HttpsExchange])"; Secure"else""));id
+  }
+ }
  private def handlePortal(x:HttpExchange):Unit={
   val path=x.getRequestURI.getPath
+  if(path.startsWith("/api/ratings/")&&x.getRequestMethod=="GET"){json(x,200,ratings.list(path.stripPrefix("/api/ratings/"),ratingBrowser(x)));return}
+  if(path=="/api/ratings"&&x.getRequestMethod=="POST"){
+   val n=requestBody(x);val kind=n.path("kind").asText;val id=n.path("id").asText
+   require(n.path("score").isIntegralNumber&&n.path("score").canConvertToInt,"评分须为整数")
+   require(kind=="app"&&applications.get(id).nonEmpty||kind=="dataset"&&catalog.list().path("datasets").elements.asScala.exists(_.path("id").asText==id),"评分对象不存在")
+   json(x,200,ratings.rate(kind,id,ratingBrowser(x),n.path("score").asInt));return
+  }
   if(path=="/workspace"||path=="/workspace/"){builderAsset(x,"workspace.html");return}
   if(path=="/api/catalog"&&x.getRequestMethod=="GET"){json(x,200,catalog.list());return}
   if(path.startsWith("/api/catalog/")&&x.getRequestMethod=="POST"){
@@ -85,7 +101,7 @@ final class Web(settings:Settings) extends AutoCloseable {
    path match{case "/api/catalog/refresh"=>json(x,200,catalog.list(true));case "/api/catalog/items"=>json(x,200,catalog.items(name,item));case "/api/catalog/preview"=>json(x,200,catalog.preview(name,item));case "/api/catalog/presign"=>json(x,200,catalog.presign(name,item));case _=>json(x,404,Support.obj.put("error","未找到资源"))};return
   }
   if(path=="/appbuilder"||path=="/appbuilder/"){if(x.getRequestMethod=="GET")builderAsset(x,"builder.html")else json(x,405,Support.obj.put("error","不支持该方法"));return}
-  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("analysis-process.js","workspace.js","workspace.css","builder.js","assistant.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
+  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("application.html","analysis-process.js","workspace.js","workspace.css","builder.js","page-studio.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
   if(path.startsWith("/appbuilder/media/")&&x.getRequestMethod=="GET"){applications.media(path.stripPrefix("/appbuilder/media/")) match{case Some(p)=>file(x,p);case None=>json(x,404,Support.obj.put("error","未找到展示图片"))};return}
   if(path.startsWith("/api/storage/")){
    val action=path.stripPrefix("/api/storage/")
@@ -121,14 +137,18 @@ final class Web(settings:Settings) extends AutoCloseable {
     val id=path.stripPrefix("/api/appbuilder/packages/");val document=applications.document(id).getOrElse(throw new IllegalArgumentException("应用不存在"));val bytes=packages.export(document);x.getResponseHeaders.set("Content-Disposition","attachment; filename="+id+".conet.zip");send(x,200,bytes,"application/zip");return
    }
    if(path=="/api/appbuilder/settings"&&x.getRequestMethod=="GET"){
-    val url=settings.config.path("appbuilder").path("designer_url").asText("");if(url.nonEmpty){val uri=URI.create(url);require(Set("http","https")(uri.getScheme)&&uri.getHost!=null&&uri.getUserInfo==null,"Job Designer 地址无效")};json(x,200,Support.obj.put("designer_url",url).put("chat_enabled",applicationChat.enabled))
+    val url=settings.config.path("appbuilder").path("designer_url").asText("");if(url.nonEmpty){val uri=URI.create(url);require(Set("http","https")(uri.getScheme)&&uri.getHost!=null&&uri.getUserInfo==null,"Job Designer 地址无效")};json(x,200,Support.obj.put("designer_url",url).put("page_generation_enabled",pageGenerator.enabled))
    }else if(path=="/api/appbuilder/statistics"&&x.getRequestMethod=="GET"){val stats=applications.statistics;stats.path("nodes").elements.asScala.foreach{row=>cached.path("overview").path("members").elements.asScala.find(_.path("identity").asText==row.path("id").asText).foreach{member=>settings.centers.find(_.path("id").asText==member.path("center_id").asText).foreach(center=>row.asInstanceOf[ObjectNode].put("name",center.path("title").asText))}};json(x,200,stats)}
    else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="GET")json(x,200,applications.list)
    else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="POST"){val body=requestBody(x,262144);val id=xstream.util.YamlDocument.parse(body.path("application_yaml").asText).path("id").asText;json(x,201,{val saved=applications.save(body);saved})}
    else if(path=="/api/appbuilder/media"&&x.getRequestMethod=="POST")json(x,201,applications.upload(requestBody(x,3000000)))
    else if(path=="/api/appbuilder/convert"&&x.getRequestMethod=="POST")json(x,200,applications.convert(requestBody(x,262144)))
-   else if(path=="/api/appbuilder/chat"&&x.getRequestMethod=="POST")json(x,200,applicationChat.reply(requestBody(x,524288)))
+   else if(path=="/api/appbuilder/pages/generate"&&x.getRequestMethod=="POST")json(x,200,pageGenerator.generate(requestBody(x,524288)))
    else if(path=="/api/appbuilder/validate"&&x.getRequestMethod=="POST")json(x,200,applications.validate(requestBody(x,262144)))
+   else if(path.startsWith("/api/appbuilder/apps/")&&x.getRequestMethod=="POST"&&(path.endsWith("/status")||path.endsWith("/delete"))){
+    val parts=path.stripPrefix("/api/appbuilder/apps/").split("/",-1);require(parts.length==2,"应用操作路径无效");val body=requestBody(x)
+    json(x,200,applications.changeStatus(parts(0),if(parts(1)=="delete")"deleted"else body.path("status").asText,body.path("revision").asText))
+   }
    else if(path.startsWith("/api/appbuilder/apps/")&&x.getRequestMethod=="GET")applications.document(path.stripPrefix("/api/appbuilder/apps/")) match{case Some(n)=>val doc=Support.copy(n).put("can_edit",true);json(x,200,doc);case None=>json(x,404,Support.obj.put("error","未找到应用"))}
    else json(x,404,Support.obj.put("error","未找到资源"));return
   }
@@ -153,7 +173,7 @@ final class Web(settings:Settings) extends AutoCloseable {
 
   if(x.getRequestMethod!="GET"){json(x,404,Support.obj.put("error","未找到资源"));return}
   path match {
-   case "/api/config"=>val out=Support.obj.put("name",settings.config.path("name").asText);out.set[JsonNode]("centers",settings.config.path("centers"));if(settings.config.path("hosting").path("enabled").asBoolean){out.set[JsonNode]("shared_center",Support.obj.put("id","shared").put("title","共享数据中心").put("url",HostedNode.status(settings).path("url").asText).set[JsonNode]("location",Support.obj.put("longitude",108.94).put("latitude",34.34).put("label","共享服务（示意位置）")))};out.set[JsonNode]("cases",Support.arr(settings.cases.map(c=>{val n=Support.copy(c);n.remove("port");n.remove("directory");n})));out.set[JsonNode]("applications",applications.list);json(x,200,out)
+   case "/api/config"=>val out=Support.obj.put("name",settings.config.path("name").asText);out.set[JsonNode]("centers",settings.config.path("centers"));if(settings.config.path("hosting").path("enabled").asBoolean){out.set[JsonNode]("shared_center",Support.obj.put("id","shared").put("title","共享数据中心").put("url",HostedNode.status(settings).path("url").asText).set[JsonNode]("location",Support.obj.put("longitude",108.94).put("latitude",34.34).put("label","共享服务（示意位置）")))};out.set[JsonNode]("cases",Support.arr(settings.cases.map(c=>{val n=Support.copy(c);n.remove("port");n.remove("directory");n})));out.set[JsonNode]("applications",Support.arr(applications.list.elements.asScala.filter(a=>a.path("status").asText=="online").toVector));json(x,200,out)
    case "/api/snapshot"=>json(x,200,cached)
    case p if p.startsWith("/api/union-jobs/") || Set("/union-assets/dag.js","/union-assets/g6.js")(p)=>
     val suffix=if(p=="/union-assets/dag.js")"/dag.js"else if(p=="/union-assets/g6.js")"/vendor/g6-5.1.1.min.js"else{val id=p.stripPrefix("/api/union-jobs/");require(id.matches("[a-zA-Z0-9-]{1,100}"),"作业编号无效");"/api/jobs/"+id}
@@ -202,5 +222,5 @@ final class Web(settings:Settings) extends AutoCloseable {
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=try uploads.cleanup(applications.activeRunKeys)catch{case NonFatal(e)=>System.err.println("Input cleanup failed: "+e.getClass.getSimpleName)}},30,60,TimeUnit.SECONDS)
   println(s"CONET: http://${settings.publicHost}:${settings.config.path("port").asInt}/")
  }
- def close():Unit={servers.foreach(_.stop(0));scheduler.shutdownNow();observations.shutdownNow();applications.close();cases.values.foreach(_.close());workers.shutdownNow()}
+ def close():Unit={servers.foreach(_.stop(0));scheduler.shutdownNow();observations.shutdownNow();applications.close();cases.values.foreach(_.close());settings.analysisScheduler.close();workers.shutdownNow()}
 }

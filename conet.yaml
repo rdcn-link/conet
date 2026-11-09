@@ -132,9 +132,13 @@ centers:
     description: 合成星表的天区覆盖范围与坐标测光体系说明
 
 appbuilder:
+  execution:
+    max_running: 2
+    max_queued: 16
+    min_free_bytes: 1073741824
   designer_url: http://10.0.82.103:8840/
 
-  chat:
+  page_generation:
     codex_config: /home/cnic/.codex/config.toml
 
   products:

@@ -148,14 +148,23 @@ function variables(parent,app,job,onError){
  }render();ConetAppBuilder.request('/api/config').then(config=>{datasets=config.centers.flatMap(c=>c.datasets||[]).filter(d=>d.case===app.data?.scope);if(!parent.isConnected)return;const select=parent.querySelector('select[aria-label="数据集"]');if(select){const selected=select.value;select.replaceChildren();const options=Object.fromEntries([['','请选择数据集'],...datasets.map(d=>[d.name,d.title||d.name])]);if(selected&&!options[selected])options[selected]=selected;for(const[value,label]of Object.entries(options)){const option=node('option','',label);option.value=value;select.append(option)}select.value=selected}}).catch(()=>{});
 }
 function basic(parent,app){
- app.presentation??={};const head=node('div','config-section-head');head.append(node('h3','','应用信息与外观'),node('p','','介绍应用，搭配主题、背景与缩略图。'));parent.append(head);
+ app.presentation??={};const head=node('div','config-section-head');head.append(node('h3','','应用信息'),node('p','','介绍应用，设置数据上下文与标签。'));parent.append(head);
  const grid=node('div','config-grid');parent.append(grid);
  const title=field(grid,app,'title','应用名称');field(grid,app,'id','应用标识');const description=field(grid,app,'description','应用介绍',{type:'textarea'});description.closest('label').classList.add('config-wide');
- app.data??={};const scope=field(grid,app.data,'scope','数据上下文',{options:{[app.data.scope||'']:app.data.scope||'请选择数据上下文'}});ConetAppBuilder.request('/api/config').then(config=>{if(!scope.isConnected)return;scope.replaceChildren();for(const c of config.cases){const option=node('option','',c.title||c.id);option.value=c.id;scope.append(option)}scope.value=app.data.scope||''}).catch(()=>{});
+
  columns(grid,app.presentation,'tags','应用标签');
+}
+function automatic(parent,app){
+ app.presentation??={};const grid=node('div','config-grid');parent.append(grid);
  const suggestion=node('div','appearance-recommendation config-wide');grid.append(suggestion);
- function recommend(){const r=ConetPresentation.recommend(app);suggestion.replaceChildren();suggestion.style.setProperty('--recommend-accent',palettes[r.theme][2]);const images=node('div','recommend-images'),background=node('img'),cover=node('img');background.src=r.background;background.alt='推荐背景图';cover.src=r.cover;cover.alt='推荐缩略图';images.append(background,cover);const text=node('div','recommend-text');text.append(node('small','','为这个应用推荐'),node('strong','',r.name+' · '+r.label),node('p','',r.reason));suggestion.append(images,text,action('应用整套推荐',()=>{Object.assign(app.presentation,{theme:r.theme,background:r.background,cover:r.cover});parent.replaceChildren();basic(parent,app)},'primary'));}
- for(const input of [title,description])input.addEventListener('input',()=>{app[input===title?'title':'description']=input.value;recommend()});grid.querySelector('textarea[aria-label="应用标签"]').addEventListener('change',recommend);recommend();themePicker(grid,app);
+ function recommend(){const r=ConetPresentation.recommend(app);suggestion.replaceChildren();suggestion.style.setProperty('--recommend-accent',palettes[r.theme][2]);const images=node('div','recommend-images'),background=node('img'),cover=node('img');background.src=r.background;background.alt='推荐背景图';cover.src=r.cover;cover.alt='推荐缩略图';images.append(background,cover);const text=node('div','recommend-text');text.append(node('small','','为这个应用推荐'),node('strong','',r.name+' · '+r.label),node('p','',r.reason));suggestion.append(images,text,action('应用整套推荐',()=>{Object.assign(app.presentation,{theme:r.theme,background:r.background,cover:r.cover});parent.replaceChildren();automatic(parent,app)},'primary'));}
+ recommend();themePicker(grid,app);
+ const defaults={layout:app.inputs?.some(f=>['polygon','cone'].includes(f.widget))?'stacked':'split',hero:'banner',surface:'soft',density:'comfortable'};const design=app.presentation.design??={};for(const [key,value]of Object.entries(defaults))design[key]??=value;const layout=node('fieldset','config-wide component-picker');layout.append(node('legend','','页面布局 · 自动生成使用此配置'));const layoutChoices=node('div','config-grid');layout.append(layoutChoices);grid.append(layout);
+ field(layoutChoices,design,'layout','内容布局',{options:{stacked:'上下布局 · 适合地图与天区',split:'均衡两栏',wide:'结果区域加宽'}});
+ field(layoutChoices,design,'hero','标题区域',{options:{banner:'场景横幅',compact:'紧凑标题',centered:'居中介绍'}});
+ field(layoutChoices,design,'surface','面板样式',{options:{soft:'柔和卡片',outlined:'细线边框',elevated:'悬浮阴影'}});
+ field(layoutChoices,design,'density','内容间距',{options:{comfortable:'舒适',compact:'紧凑'}});
+
  const gallery=node('fieldset','background-gallery config-wide');gallery.append(node('legend','','应用背景图'));const choices=node('div','background-choices');gallery.append(choices);grid.append(gallery);
  for(const p of [{id:'auto',name:'跟随主题'},{id:'none',name:'无背景'},...ConetPresentation.presets.map(p=>({id:p.background,name:p.label,image:p.background}))]){
   const label=node('label','background-choice'),radio=node('input');radio.type='radio';radio.name='application-background';radio.value=p.id;radio.setAttribute('aria-label',p.name+(['auto','none'].includes(p.id)?'':'背景'));radio.checked=p.id==='auto'?!Object.hasOwn(app.presentation,'background'):p.id==='none'?app.presentation.background===null:app.presentation.background===p.id;
@@ -172,4 +181,4 @@ function basic(parent,app){
 }
 
 function settings(parent,app){app.limits??={max_queued:4,max_result_bytes:8388608};app.presentation??={};const head=node('div','config-section-head');head.append(node('h3','','运行设置'));parent.append(head);const grid=node('div','config-grid');parent.append(grid);field(grid,app.limits,'max_queued','等待及运行任务上限',{type:'number'});const max={size:(app.limits.max_result_bytes||8388608)/1048576};field(grid,max,'size','结果大小上限（MiB）',{type:'number',change:()=>app.limits.max_result_bytes=Math.round(max.size*1048576)});field(grid,app.presentation,'notice','页面提示',{type:'textarea',optional:true}).closest('label').classList.add('config-wide');field(grid,app,'synthetic','标注为合成数据演示',{type:'checkbox'})}
-window.ConetConfigurationForms={inputs:inputForms,result:resultForms,variables,basic,options:settings};})();
+window.ConetConfigurationForms={inputs:inputForms,result:resultForms,variables,basic,automatic,options:settings};})();

@@ -53,10 +53,12 @@ final class UnionBackend(connection:()=>JsonNode) extends JobBackend {
   };bytes.toByteArray
  }
 }
-final class ApplicationService(val definition:Definition,val state:Path,manifest:()=>JsonNode,backend:JobBackend,val base:String,inputFiles:InputFiles=InputFiles.unavailable) extends AutoCloseable {
+final class ApplicationService(val definition:Definition,val state:Path,manifest:()=>JsonNode,backend:JobBackend,val base:String,inputFiles:InputFiles=InputFiles.unavailable,sharedScheduler:Option[AnalysisScheduler]=None) extends AutoCloseable {
  val id=definition.id
  private val jobs=scala.collection.mutable.Map.empty[String,ObjectNode]
- private val pool=Executors.newSingleThreadExecutor()
+ private val admission=sharedScheduler.getOrElse(new AnalysisScheduler())
+ private val ownsScheduler=sharedScheduler.isEmpty
+ @volatile private var closed=false
  private val controls=new ConcurrentHashMap[String,JobControl]()
  private def now=java.time.Instant.now.toString
  private def save(j:ObjectNode):Unit={val path=state.resolve("web-jobs").resolve(j.path("id").asText+".json");Files.createDirectories(path.getParent);val temp=path.resolveSibling(path.getFileName.toString+".tmp");Files.write(temp,Json.mapper.writeValueAsBytes(j));Files.move(temp,path,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)}
@@ -78,20 +80,25 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
  def upload(field:String,name:String,stream:java.io.InputStream):JsonNode=inputFiles.upload(definition,field,name,stream)
  def preview(payload:JsonNode):JsonNode={val input=inputFiles.resolve(definition,definition.validate(payload,manifest()),None);val bindings=definition.variableBindings.filterNot(_._2.has("dataset"));val v=Values.obj;bindings.foreach{case(k,b)=>if(b.has("input")){val value=input.at("/"+b.path("input").asText.replace(".","/"));v.set[JsonNode](k,if(value.isObject&&value.has("upload_id"))value.path("uri")else value)}};val n=Values.obj;n.set[JsonNode]("inputs",input);n.set[JsonNode]("input_variables",v);n.put("job_yaml",definition.jobYaml);n}
  def submit(payload:JsonNode,submittedBy:Option[JsonNode]=None):(Int,JsonNode)=synchronized{
+  if(closed)return(503,Values.obj.put("error","分析服务正在关闭"))
   val validated=definition.validate(payload,manifest());if(jobs.values.count(j=>Set("queued","running")(j.path("state").asText))>=definition.config.path("limits").path("max_queued").asInt(4))return(429,Values.obj.put("error","任务队列已满，请等待当前分析完成"))
-  val identifier=java.util.UUID.randomUUID.toString.replace("-","");val input=inputFiles.resolve(definition,validated,Some(identifier));input.put("id",identifier).put("state","queued").put("created_at",now).put("synthetic",definition.config.path("synthetic").asBoolean(true));input.set[JsonNode]("definition",definition.publicConfig);input.put("job_yaml",definition.jobYaml);input.put("app_id",id);submittedBy.foreach(a=>input.set[JsonNode]("submitted_by",a))
+  val identifier=java.util.UUID.randomUUID.toString.replace("-","")
+  val rejected=admission.submit(id,identifier,state){
+  val input=inputFiles.resolve(definition,validated,Some(identifier));input.put("id",identifier).put("state","queued").put("created_at",now).put("synthetic",definition.config.path("synthetic").asBoolean(true));input.set[JsonNode]("definition",definition.publicConfig);input.put("job_yaml",definition.jobYaml);input.put("app_id",id);submittedBy.foreach(a=>input.set[JsonNode]("submitted_by",a))
   val stepOperators=Values.obj;YamlDocument.parse(definition.jobYaml).path("steps").elements.asScala.foreach(s=>stepOperators.put(s.path("id").asText,s.path("operator").asText));input.set[JsonNode]("step_operators",stepOperators)
-  jobs(identifier)=input;save(input);val control=new JobControl();controls.put(identifier,control)
-  pool.submit(new Runnable{def run():Unit=execute(identifier,control)});(202,Values.copy(input))
+  save(input);jobs(identifier)=input;val control=new JobControl();controls.put(identifier,control)
+  ()=>execute(identifier,control)
+  }
+  rejected match{case Some((code,message))=>(code,Values.obj.put("error",message));case None=>(202,Values.copy(jobs(identifier)))}
  }
  def cancel(identifier:String):Option[JsonNode]={
   val control=synchronized{jobs.get(identifier).filter(j=>Set("queued","running")(j.path("state").asText)).map{j=>j.put("state","cancelled").put("finished_at",now);save(j);Option(controls.get(identifier))}}
-  control.flatten.foreach(c=>try c.cancel()catch{case NonFatal(e)=>System.err.println(s"App $id cancellation failed: ${e.getClass.getSimpleName}")});get(identifier)
+  control.flatten.foreach(c=>try c.cancel()catch{case NonFatal(e)=>System.err.println(s"App $id cancellation failed: ${e.getClass.getSimpleName}")});admission.remove(id,identifier).foreach(_.apply());get(identifier)
  }
  private def execute(identifier:String,control:JobControl):Unit={
   val output=state.resolve("results").resolve(identifier)
   try {
-   control.check();val job=get(identifier).get;val m=manifest();val scope=definition.config.path("data").path("scope").asText(id)
+   control.check();admission.checkDisk(state);val job=get(identifier).get;val m=manifest();val scope=definition.config.path("data").path("scope").asText(id)
    val datasets=if(definition.variableBindings.values.exists(_.has("dataset")))backend.datasets(scope)else Map.empty[String,String]
    control.check();val vars=definition.variables(job,m,datasets)
    val resolved=YamlDocument.parse(WorkflowVariables.resolve(definition.jobYaml,vars))
@@ -100,7 +107,7 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
    val raw=backend.execute(definition.jobYaml,vars,definition.config.path("limits").path("max_result_bytes").asLong(8L*1024*1024),control,
     executionId=>update(identifier){j=>if(!control.cancelled.get())j.put("job_id",executionId).put("state","running").put("started_at",now);j.set[JsonNode]("variables",vars)},
     status=>update(identifier){j=>Usage.observe(j,status);j.set[JsonNode]("execution",status);j.put("updated_at",now)})
-   control.check();require(raw.length.toLong<=definition.config.path("limits").path("max_result_bytes").asLong(8L*1024*1024),"成果超过应用输出上限");val result=Results.write(definition,output,raw,vars);val summary=Values.copy(Results.summary(definition,result));summary.put("job_id",get(identifier).get.path("job_id").asText)
+   control.check();admission.checkDisk(state);require(raw.length.toLong<=definition.config.path("limits").path("max_result_bytes").asLong(8L*1024*1024),"成果超过应用输出上限");val result=Results.write(definition,output,raw,vars);val summary=Values.copy(Results.summary(definition,result));summary.put("job_id",get(identifier).get.path("job_id").asText)
    val artifacts=Values.obj;definition.artifacts.foreach(a=>artifacts.put(a.path("id").asText,base+"/results/"+identifier+"/"+a.path("file").asText));artifacts.put("metadata",base+"/results/"+identifier+"/metadata.json").put("report",base+"/results/"+identifier+"/report.md");artifacts.put("analysis",base+"/results/"+identifier+"/analysis.json").put("variables",base+"/results/"+identifier+"/variables.yaml")
    val completed=Values.copy(get(identifier).get).put("state","succeeded").put("finished_at",now);completed.set[JsonNode]("summary",summary);completed.set[JsonNode]("result",result);completed.set[JsonNode]("artifacts",artifacts)
    control.check();ProductMetadata.write(definition,completed,output)
@@ -116,5 +123,5 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
    controls.remove(identifier);if(get(identifier).exists(_.path("state").asText!="succeeded")&&Files.isDirectory(output))Using.resource(Files.walk(output)){paths=>paths.iterator.asScala.toVector.sortBy(_.getNameCount).reverse.foreach(Files.deleteIfExists(_))}}
  }
  def artifact(identifier:String,file:String):Option[Path]=get(identifier).filter(_.path("state").asText=="succeeded").flatMap{j=>val declared=j.path("artifacts").elements.asScala.map(_.asText.split('/').last).toSet;if(declared(file)&& !file.contains("/")&& !file.contains("\\"))Some(Values.relative(state.resolve("results").resolve(identifier),file))else None}
- def close():Unit={controls.values.asScala.foreach(c=>try c.cancel()catch{case NonFatal(_)=>()});pool.shutdownNow();pool.awaitTermination(10,TimeUnit.SECONDS)}
+ def close():Unit={closed=true;controls.keySet.asScala.toVector.foreach(cancel);if(ownsScheduler)admission.close()}
 }

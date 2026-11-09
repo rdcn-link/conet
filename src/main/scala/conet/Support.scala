@@ -12,6 +12,10 @@ import scala.jdk.CollectionConverters._
 import scala.util.Using
 
 final class Settings(val root:Path){
+ lazy val analysisScheduler:conet.appbuilder.AnalysisScheduler={
+  val limits=config.path("appbuilder").path("execution")
+  new conet.appbuilder.AnalysisScheduler(limits.path("max_running").asInt(2),limits.path("max_queued").asInt(16),limits.path("min_free_bytes").asLong(1024L*1024*1024))
+ }
  val config=YamlDocument.parse(Files.readString(root.resolve("conet.yaml")))
  val state=root.resolve(".state");Files.createDirectories(state)
  val network=state.resolve("network")

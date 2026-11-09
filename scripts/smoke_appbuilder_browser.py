@@ -41,9 +41,11 @@ async def run(args):
         await page.wait_for_function("document.querySelector('#overview-title').textContent !== '选择应用或新建应用'");await page.locator('#edit-app').click();await page.wait_for_function("document.querySelector('#application').value.length > 0")
         await page.locator('#validate').click()
         await page.wait_for_function("document.querySelector('#notice').textContent.includes('配置校验通过')")
-        await page.locator('#preview').click()
-        await page.wait_for_function("!document.querySelector('#preview-panel').hidden")
-        assert await page.locator('#preview-inputs .field').count() > 0
+        await page.locator('#open-preview').click()
+        await page.locator('#auto-settings-generate').click()
+        await page.wait_for_function("document.querySelector('#preview-panel').open")
+        await page.frame_locator('#page-preview').locator('#inputs .field').first.wait_for()
+        assert await page.frame_locator('#page-preview').locator('#submit').is_disabled()
         assert await page.locator('#statistics').text_content()
         if args.screenshot:
             await page.screenshot(path=args.screenshot, full_page=True)

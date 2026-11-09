@@ -13,8 +13,8 @@ CONET App Builder publishes analysis applications from an application definition
 1. Open `/appbuilder/` from the portal's **应用工作台** navigation entry.
 2. Load one of the three published applications as a template.
 3. Click **新建应用** for a new draft, or select an application and click **编辑**. **复制应用** creates an independent draft without changing the original. Use the **应用信息**, **输入表单**, **变量绑定**, **结果与下载** and **运行设置** tabs for application configuration; **流程设计** opens XStream Job Designer; **YAML 源码** provides synchronized source editing.
-4. Use **校验配置** to check both definitions, and **预览表单** to inspect the generated input form without submitting a job.
-5. Click **发布应用**. The returned link `/apps/<id>/` is immediately usable without restarting the server. Share this URL with visitors who need to run the analysis.
+4. Use **校验配置** to check both definitions. Click **查看预览** to open the last generated page; without a generated page, automatic-generation settings open first. The preview window provides automatic and intelligent regeneration without submitting a Job.
+5. Adjust the preview through conversation if needed, then click **保存并发布**. The returned link `/apps/<id>/` is immediately usable without restarting the server. Share this URL with visitors who need to run the analysis.
 
 Published pages are independent visitor interfaces: they display the application identity, input form, analysis progress, result views, downloads and collapsed history. They contain no workbench links, YAML editors or developer dashboards. The layout adapts to desktop and mobile screens. The share button provides the current application URL.
 
@@ -48,7 +48,7 @@ Administrators configure `conet.yaml`:
 ```yaml
 appbuilder:
   designer_url: http://10.0.82.103:8840/
-  chat:
+  page_generation:
     codex_config: /home/cnic/.codex/config.toml
 ```
 
@@ -120,13 +120,9 @@ Use only the bindings needed by the Job. Input objects and arrays preserve their
 
 `limits.max_queued` limits accepted queued/running jobs per application (default 4, maximum 100). `limits.max_result_bytes` caps the output stream (default 8 MiB, maximum 64 MiB). Each application processes one analysis at a time. Failure and cancellation remove partial results. Restarted unfinished runs are marked interrupted; check the Union dashboard before resubmission.
 
-## Conversational application configuration
+## Intelligent page generation connection
 
-While editing a draft, click **对话生成配置**. The assistant leads an interview, asking about the purpose, user inputs and result presentation over multiple rounds. After at least two answers, it can produce complete application YAML using the existing form, data and result fields as context. Proposals are validated server-side before display. **应用到草稿** updates the editor; publishing remains a separate action.
-
-The assistant edits application configuration only. It does not write Jobs or change data contexts or existing variable bindings; it can add inputs and bindings for unbound Job variables. Define the Job in Job Designer, then configure bindings in the application form. An empty Job can be discussed but cannot produce a publishable proposal. Restart clears the interview; closing retains it; reopening after a draft change starts a new interview. Conversations remain in browser memory and are cleared on reload.
-
-`codex_config` points to a server-readable Codex TOML file. The assistant uses its selected `model`, `model_provider`, provider `base_url` and `wire_api: responses`. Credentials come from the provider's `experimental_bearer_token` or the server environment variable named by `env_key`. Browsers receive availability only, never the model endpoint, account or secret. Never commit credential files. The model receives application and Job definitions and the interview, not execution data, Tokens or CA files. Requests time out after 120 seconds, with at most two concurrent requests and 12 answers per interview. Failures preserve the draft and allow retry.
+Configure `appbuilder.page_generation.codex_config` with a server-readable Codex TOML file. Generation and preview conversations use its selected `model`, `model_provider`, provider `base_url` and `wire_api: responses`. Credentials come from `experimental_bearer_token` or the server environment variable named by `env_key`. Browsers receive availability only, never credentials. Never commit credential files. The model receives the application definition, complete Job, variable usage locations and conversation. It does not receive execution data, Tokens or CA files. Requests time out after 120 seconds, with at most two concurrent requests and 12 conversation turns. Errors preserve the last generated draft and published application.
 
 ## Usage statistics
 
@@ -150,11 +146,11 @@ Counters cover jobs submitted through CONET applications, not every job submitte
 | Method and route | Purpose |
 |---|---|
 | `GET /api/appbuilder/settings` | Designer URL and assistant availability; no credentials |
-| `POST /api/appbuilder/chat` | Interview with `{application_yaml, job_yaml, messages}`; user/assistant role and content only; maximum 512 KiB request |
 | `GET /api/appbuilder/apps` | Published applications and URLs |
 | `GET /api/appbuilder/apps/<id>` | Definition, Job, revision and URL |
 | `POST /api/appbuilder/validate` | Validate `{application_yaml, job_yaml}`; optional `inputs` |
-| `POST /api/appbuilder/apps` | Publish the same payload; include current `revision` when updating |
+| `POST /api/appbuilder/apps` | Publish the previewed payload; include current `revision` when updating |
+| `POST /api/appbuilder/pages/generate` | Generate or revise presentation from `application_yaml`, `job_yaml` and `messages`; does not publish |
 | `GET /api/appbuilder/statistics` | Usage counters |
 | `POST /api/appbuilder/convert` | Convert `{application, job}` objects or YAML strings into typed JSON and YAML without publishing |
 | `POST /api/appbuilder/media` | Upload `{content_base64}` PNG/JPEG cover image |
@@ -198,7 +194,7 @@ Design the workflow first, then its form, variable bindings and result views. De
 
 ## Application themes
 
-Choose a theme from the five miniature page previews in the **应用信息** tab, or set `presentation.theme` in YAML. Values are `coast`, `forest`, `indigo`, `amber` and `rose`; the default is `coast`. Themes coordinate page backgrounds, headings, marks, buttons and download links, and travel with application packages. Check-dam, observatory and emergency examples use forest, indigo and amber respectively. All published applications use `/apps/<id>/`; custom case pages and separate case HTTP listeners are not served.
+Use **重新自动生成** inside the preview and choose a theme from the five miniature page previews in its settings step, or set `presentation.theme` in YAML. Values are `coast`, `forest`, `indigo`, `amber` and `rose`; the default is `coast`. Themes coordinate page backgrounds, headings, marks, buttons and download links, and travel with application packages. Check-dam, observatory and emergency examples use forest, indigo and amber respectively. All published applications use `/apps/<id>/`; custom case pages and separate case HTTP listeners are not served.
 
 ## Published page presentation
 
@@ -206,7 +202,7 @@ Application pages use the configured cover and tags in a compact introduction, f
 
 ## Backgrounds and suggested appearance
 
-In **应用信息**, edit the title, description and tags to see a suggested theme, background and thumbnail. Suggestions match subject keywords and input capabilities against bundled visual presets; they do not send descriptions to a model or generate photos. **应用整套推荐** changes the draft only. Preview the selection, adjust individual images, then publish.
+Edit the title, description and tags in **应用信息**, then open **查看预览** and use automatic-generation settings to see a suggested theme, background and thumbnail in the settings dialog. Suggestions match subject keywords and input capabilities against bundled visual presets; they do not send descriptions to a model or generate photos. **应用整套推荐** changes the draft only. Preview the selection, adjust individual images, then publish.
 
 The background gallery offers **跟随主题**, **无背景** and five bundled backgrounds. Upload PNG/JPEG images (up to 2 MiB each) or enter an HTTPS image URL. The thumbnail is used on the application card and introduction; the background decorates the published page behind readable content surfaces.
 
@@ -223,3 +219,55 @@ Omit `background` to follow the theme, or use `background: null` for a plain bac
 Published pages adapt their layout to inputs. Maps keep a wide selection surface; file-based applications place controls beside results. ICRS selection has a coordinate sketch and zoom controls. Result tables have a bounded scrolling preview; scatter plots provide axes, zoom/reset and hover coordinates. If the geographic basemap cannot connect, maps explicitly show a longitude/latitude selection view; this is not a substitute for geographic imagery.
 
 **开始分析** is disabled while a submission is in flight and throughout queued/running states. It becomes available after completion, failure, timeout or cancellation. Transient status polling failures keep it disabled while the client retries status checks.
+
+## Global analysis admission and resource limits
+
+Configure the web process in `conet.yaml` (not in individual application packages):
+
+```yaml
+appbuilder:
+  execution:
+    max_running: 2
+    max_queued: 16
+    min_free_bytes: 1073741824
+```
+
+These defaults allow two active analyses across all applications and sixteen waiting analyses. Each application still runs at most one analysis at a time; its own `limits.max_queued` bounds running plus waiting jobs for that application. The global queue skips applications already running so another application can use an available slot. A zero global queue permits only immediately runnable jobs. Admission is synchronized across concurrent submissions in this CONET web process.
+
+A full queue returns HTTP 429 without creating an analysis record. Insufficient disk space, or an inability to check it, returns HTTP 507. The server checks usable space on the analysis storage filesystem before admission, before starting queued work, and before writing results. A queued analysis that fails the start-time check is recorded as failed without submitting a backend Job. Cancelling queued work releases its queue slot immediately; failure and cancellation release execution slots after cleanup. Service shutdown rejects new work and cancels active analyses. Closing the browser does not cancel an accepted analysis. Change these deployment settings by restarting the web service after current analyses finish.
+
+The disk threshold is a headroom check, not a reservation or per-job quota. Other writes can still consume space. These limits cover App Builder submissions in one web process, not direct DACP/Union submissions, multiple CONET processes, file uploads, or storage retained by completed products. Set execution-node CPU/memory/container and concurrency limits separately; an analysis slot does not reserve a fixed amount of node resources. Per-application `max_result_bytes` limits returned results, not total working memory.
+
+## Generate, preview and publish an application page
+
+After configuring the Job, inputs, variable bindings and results, select **Automatic generation** to render the structured form, result and appearance settings, or **Intelligent generation** to design a page from task semantics and configured variables. Automatic generation uses `presentation.design` (`layout`, `hero`, `surface`, `density`) and the selected theme; it does not reuse an earlier model design. Intelligent generation reads the complete Job and variable usage locations. Intelligent generation can vary the layout, hero, panel appearance, density, accent and introductory text on each request. It uses the server-side `appbuilder.page_generation.codex_config` connection; browsers never receive credentials.
+
+Intelligent generation designs from the task, inputs and results independently of Page settings. Initial generation does not send the configured layout, theme, background, cover or previous page to the model. The generated page owns its theme, background and cover, overriding those settings when rendered. Page settings remain saved for automatic generation. Conversational adjustments use the current generated page.
+
+Both modes open a large preview dialog with the actual configured input controls and initial result state. The toolbar offers **Regenerate automatically** and **Regenerate intelligently**. UNDO / REDO restores up to 20 preview versions; new changes clear redo history. Closing and reopening retains the current preview and conversation. Preview cannot submit analyses. Use the conversation beside the preview to request layout, color or wording changes; replies proposing changes show **Update now**. Only clicking it changes the preview and draft. Sending a chat message shows the waiting indicator on the send button without covering or reloading the left preview; current form values remain intact. Receiving a change proposal does not refresh the preview automatically. Answers without changes do not refresh the page. Undo, redo and regeneration invalidate older proposals. Generation never changes the Job, inputs, variable bindings, data scope or result contracts. Editing the configuration invalidates publication of the older preview; generate again before publishing.
+
+Choose **Save and publish** to persist the exact previewed application. Existing revision checks still apply. The validated `presentation.page` specification is included in application packages, so export/import preserves the approved appearance. Supported fields are `layout` (`split`, `stacked`, `wide`), `hero` (`banner`, `compact`, `centered`), `surface` (`soft`, `outlined`, `elevated`), `density` (`comfortable`, `compact`), six-digit hexadecimal `accent`, `heading` (80 characters) and `intro` (400 characters). Generated executable HTML, scripts and styles are not accepted. A model error leaves the draft and published application unchanged; automatic generation remains available without a model connection.
+
+Generated pages may independently declare `theme`, `background` and `cover`; images may be null or local resources under `/assets/`. Generated pages may also declare `input_labels` (input path to label, up to 80 characters), `input_hints` (input path to help text, up to 240 characters) and `input_order` (a permutation of all top-level input names). Nested paths use dots. Only declared inputs may be referenced; names, widgets, bounds, variable bindings and result contracts remain unchanged. Preview conversations can propose changes to these presentation fields and layout; click **Update now** to apply them. **View preview** reopens the current page without generating again. After changing structural configuration, regenerate before publishing.
+
+The preview conversation sidebar can be collapsed and expanded; collapsing gives the preview the full width. Package export is available from the application overview, outside the editor.
+
+## Dataset and application ratings
+
+The application service list, standalone App pages, dataset list and dataset detail pages offer 1–5 ratings, average scores and vote counts. Rating again from the same browser replaces its score without increasing the count. An HttpOnly Cookie distinguishes browsers without login; clearing it or using another browser creates a new rating source. Ratings are stored separately in `.state/ratings.json`, outside App definitions and DACP dataset metadata. Include that file in runtime-state backups.
+
+`GET /api/ratings/app` and `GET /api/ratings/dataset` return aggregates and the current browser rating. `POST /api/ratings` accepts `kind` (`app`/`dataset`), an existing object `id`, and an integer `score` (1–5). Atomic replacement preserves ratings across service restarts.
+
+Automatic generation includes a dedicated settings step: click **View preview** for an application without a generated page, or **Regenerate automatically** inside the preview, adjust theme, layout, hero, panels, spacing, background and cover, then click **Generate and preview**. Cancel discards these setting changes. Application information contains the name, description and tags. Intelligent generation designs the page directly without this settings step.
+
+The editing toolbar contains only **Validate configuration**, **View preview** and **Finish editing**. View preview restores the last generated page from the current editing session or the saved application configuration. An application without a generated page opens automatic-generation settings. Automatic/intelligent regeneration and conversational adjustments are available inside the preview window.
+
+## Application publication and deletion
+
+Choose **Take offline** in the application overview to disable its public page and new analysis submissions and hide it from the homepage and application service list. Offline applications remain editable and exportable; **Publish online** restores service. Accepted analyses continue. Analysis history, result files and published datasets remain available.
+
+**Delete** opens an in-page confirmation dialog and refuses deletion while analyses are running or queued. Deletion removes the application from management lists and disables it, retaining archived definitions, history and products. There is no UI undo and the identifier cannot be reused. Status persists across restarts in `.state/appbuilder/lifecycle.json`.
+
+Management APIs: `POST /api/appbuilder/apps/<id>/status` accepts `{status: online|offline, revision: <current revision>}`; `POST /api/appbuilder/apps/<id>/delete` accepts `{revision: <current revision>}`. Both validate request origin and revision. Offline/deleted application pages and new submissions return HTTP 410; existing task records and result endpoints remain available.
+
+Application information no longer exposes a data-context selector. Existing `data.scope` and manifest-backed defaults in application packages remain intact for execution.
