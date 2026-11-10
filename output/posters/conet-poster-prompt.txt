@@ -1,0 +1,42 @@
+Use case: ads-marketing
+Asset type: final Chinese promotional poster for CONET, portrait A3 proportions, high resolution approximately 2048 x 2896 or higher.
+Primary request: Create a polished, visually compelling Chinese promotional poster for CONET, a scientific data collaboration network. This should be a finished designed poster with beautifully typeset, accurate Simplified Chinese, not a UI screenshot or a document full of text.
+Input image: the provided small teal CONET four-connected-node logo is a brand reference. Preserve its recognizable four circular nodes connected in a zigzag and pale teal rounded-square shape. Use it beside the word CONET at the top; do not invent a different logo. This input is not a background or an edit target.
+Art direction: premium scientific visualization meets modern editorial graphic design. Warm near-white background, sophisticated deep navy text, teal/cyan accents faithful to logo #15828f, occasional restrained amber highlights for application results. Strong hierarchy, generous intentional margins, dense but balanced informative composition. Crisp sans-serif Chinese typography, excellent legibility and careful line breaks. Avoid generic corporate template grids, busy neon cyberpunk effects and excessive empty space.
+Composition: portrait poster. Top ~20% brand and striking large Chinese headline. Middle ~35% a beautiful semi-realistic three-dimensional globe / data collaboration network with eight compact glowing scientific data nodes and a central coordinating Union node above the globe, connected by elegant thin flowing cyan paths. Surround with subtly integrated imagery: loess plateau terrain/river, multi-band starfield and emergency hazard map. Network must clearly express distributed scientific data collaborating, not a telecommunications advertisement. Small workflow with four readable Chinese stages below the network. Lower area four compact capabilities with tasteful pictograms plus three strong visual case cards (earth terrain, deep-space stars, hazard map). Footer open-source project URL and technology attribution. No invented dashboard metrics or fake screenshots.
+Exact Chinese/English copy to include (verbatim, no additional explanatory filler):
+CONET
+数据协作网络
+让分布式数据，汇聚成可分享的科学成果
+连接多中心数据 · 构建分析应用 · 发布数据产品
+
+A small readable label near the coordinating network node:
+Union 跨节点协同
+
+Workflow in sequence with elegant connecting arrows:
+发现数据 → 设计应用 → 协同执行 → 发布成果
+
+Four capabilities, each title plus one short description:
+统一数据目录
+浏览多节点数据集与 Item
+可视化应用构建
+流程设计 · 表单配置 · 智能生成
+跨节点协同分析
+Union 协调 · XStream 执行
+分析产品发布
+结果可视化 · 过程溯源 · 成果共享
+
+Three use case cards:
+淤地坝选址
+地形 × 遥感 × 水文
+多波段星表分析
+跨天文台匹配与颜色分析
+灾情应急分析
+多中心数据融合与影响评估
+
+Footer:
+基于 DACP 与 XStream
+开源项目  github.com/rdcn-link/conet
+案例使用合成数据，仅用于技术演示
+
+Constraints: All Chinese must be accurately rendered, clear, not garbled. Keep text concise and organized; do not duplicate headlines or use random pseudo-text. No QR code. No fabricated performance promises, user counts, institutions, geographic labels or real disaster predictions. Make the result elegant and publication-ready.

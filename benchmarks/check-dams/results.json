@@ -1,0 +1,628 @@
+{
+  "timestamp": "2026-11-08T11:48:15Z",
+  "config": {
+    "download_protocol": "FTP (unencrypted)",
+    "disk_sink": "write-and-close; no fsync",
+    "repeats": 3,
+    "warmups": 1,
+    "seed": 20261108,
+    "download_workers": 3,
+    "timeout": 600
+  },
+  "host": {
+    "platform": "Linux-6.8.0-85-generic-x86_64-with-glibc2.39",
+    "logical_cpus": 16,
+    "network": "Existing CONET loopback nodes; shared physical host; no bandwidth shaping"
+  },
+  "sources": {
+    "TERRAIN_URI": {
+      "center": "a",
+      "dataset": "terrain",
+      "item": "terrain.bundle",
+      "bytes": 277760000,
+      "sha256": "eda7082e65f3113f3eec5ea5a85b6b34e90544e6d941ecd3335f88e9b319d4c4"
+    },
+    "IMAGERY_URI": {
+      "center": "b",
+      "dataset": "imagery",
+      "item": "imagery.bundle",
+      "bytes": 555120640,
+      "sha256": "cb4f2daf2a2397aeb1e26a24c06eb3eb637fac68c19abacb5e071f7357c83ded"
+    },
+    "CHANNEL_GRIDS_URI": {
+      "center": "c",
+      "dataset": "channels",
+      "item": "channels.bundle",
+      "bytes": 185180160,
+      "sha256": "ba58cd963acbddf8741688af11019fbb82cbfb30cef93a63edfccdb24dde780f"
+    }
+  },
+  "inputs": {
+    "region": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            109.1107897841093,
+            36.05322366614358
+          ],
+          [
+            109.20694875299046,
+            36.05322366614358
+          ],
+          [
+            109.20694875299046,
+            36.131268701939064
+          ],
+          [
+            109.1107897841093,
+            36.131268701939064
+          ],
+          [
+            109.1107897841093,
+            36.05322366614358
+          ]
+        ]
+      ]
+    },
+    "min_confidence": 0.35
+  },
+  "source_sha256": {
+    "benchmarks/check-dams/compare.py": "24973a9a77e2c04b4d254537301da94d215d3c756fcf6c8d0b432b9a56b83d1b",
+    "cases/check-dams/job.yaml": "f940118d06df471f8e14b51e7c5000d34ea7bd34f818b6bd60a1666ccc1941b3",
+    "cases/check-dams/operator/analysis.py": "f00055f3d380a7baded4c99f73d5083fdf1382018502987478bed6670f62bf50",
+    "cases/check-dams/operator/common.py": "237f5f4d7b7fceb81d8a941bc6abf302414b0d7220a990ec66be2935d1b021bd",
+    "cases/check-dams/operator/polygon_region.py": "affd168d89ada14adf53e44f4c17208c2832373d44697bf3b54fbdc130ae0d9f"
+  },
+  "operator_sha256": {
+    ".state/network/operators/check_dam_detect/1.0/analysis.zip": "aeaa36c88b4bb1bd483ce2fdca1566cd47df640971ea3298f5e7c3c9a8e9f9ec",
+    ".state/network/operators/check_dam_detect/1.0/operator.yaml": "4f74f46a7a80f95a31dd3c1915f57a0b6a9c5101b385ac20db87b5ad5ab9da4c",
+    ".state/network/operators/check_dam_detect/1.1/analysis.zip": "010861f2582b3574409b08177d4e0db92a883ee3f4eace58726fc697dd03ba65",
+    ".state/network/operators/check_dam_detect/1.1/operator.yaml": "457002702b025d25711726008dbb5b4834f04a3d3d18abd84e820a4fd9f90b9e",
+    ".state/network/operators/check_dam_map/1.0/analysis.zip": "c52582336f14476c14eac52e1bad01d5a82def2f4d1fa9a4c11c574530412a77",
+    ".state/network/operators/check_dam_map/1.0/operator.yaml": "51d668cb015e68d9b81b836d41168e3741848934dff395caf2f1a564491f2e94",
+    ".state/network/operators/check_dam_map/1.1/analysis.zip": "59574a8a2f9b92ae84a8d5b5fcd779f89f7bebc38e774d91f191c02445f53083",
+    ".state/network/operators/check_dam_map/1.1/operator.yaml": "b6479bc7ecd3af67b749509840e78e97eae77f383a46bb591b9987486a5cc35d",
+    ".state/network/operators/check_dam_overlap/1.0/analysis.zip": "c52582336f14476c14eac52e1bad01d5a82def2f4d1fa9a4c11c574530412a77",
+    ".state/network/operators/check_dam_overlap/1.0/operator.yaml": "be0eb092fb559dc9a16368e8ee638911087bdca0867a253818907f4f2a372a04",
+    ".state/network/operators/check_dam_overlap/1.1/analysis.zip": "59574a8a2f9b92ae84a8d5b5fcd779f89f7bebc38e774d91f191c02445f53083",
+    ".state/network/operators/check_dam_overlap/1.1/operator.yaml": "165cc821c75362a1190586082746831e6ca2ebce6dbb9c33e2b7ef0882c57daf",
+    ".state/network/operators/check_dam_susceptibility/1.0/analysis.zip": "c52582336f14476c14eac52e1bad01d5a82def2f4d1fa9a4c11c574530412a77",
+    ".state/network/operators/check_dam_susceptibility/1.0/operator.yaml": "d3ccf5b563470786333405fea68fb3df75eadeca0de3fd6f90d1cf22f1dfe58d",
+    ".state/network/operators/check_dam_susceptibility/1.1/analysis.zip": "59574a8a2f9b92ae84a8d5b5fcd779f89f7bebc38e774d91f191c02445f53083",
+    ".state/network/operators/check_dam_susceptibility/1.1/operator.yaml": "aded7a87522f29d8d22bfbf1c96ec36b692958a87d2299663e3eabe3fe2ef169",
+    ".state/network/operators/check_dam_terrain/1.0/analysis.zip": "c52582336f14476c14eac52e1bad01d5a82def2f4d1fa9a4c11c574530412a77",
+    ".state/network/operators/check_dam_terrain/1.0/operator.yaml": "e5c10dd4b3bf03f89eed9d8388de633701cdc74b7740f330b87eb03f902a23cd",
+    ".state/network/operators/check_dam_terrain/1.1/analysis.zip": "59574a8a2f9b92ae84a8d5b5fcd779f89f7bebc38e774d91f191c02445f53083",
+    ".state/network/operators/check_dam_terrain/1.1/operator.yaml": "e9ed1378fba539fb9d94c9b66408cfe4f2f721de2e15c25f538d5c34b045dda0"
+  },
+  "job_yaml": "name: 易发山洪沟道内的淤地坝识别\nsteps:\n- id: terrain_data\n  operator: read_item@1.0\n  inputs: {}\n  params:\n    uri: $TERRAIN_URI\n    view: bytes\n- id: terrain_metrics\n  operator: check_dam_terrain@1.1\n  inputs:\n    source: terrain_data\n  params:\n    operation: terrain\n    region: $REGION\n    region_bbox: $REGION_BBOX\n    entropy_bins: 16\n- id: susceptible_channels\n  operator: check_dam_susceptibility@1.1\n  inputs:\n    source: terrain_metrics\n  params:\n    operation: susceptibility\n    region: $REGION\n    region_bbox: $REGION_BBOX\n    min_slope_ratio: 0.08\n    max_slope_ratio: 0.5\n    max_entropy: 0.2\n    max_downstream_hops: 32\n- id: imagery\n  operator: read_item@1.0\n  inputs: {}\n  params:\n    uri: $IMAGERY_URI\n    view: bytes\n- id: candidate_sites\n  operator: check_dam_detect@1.1\n  inputs:\n    source: imagery\n  params:\n    operation: detect\n    region: $REGION\n    region_bbox: $REGION_BBOX\n    min_confidence: $MIN_CONFIDENCE\n    duplicate_distance_m: 60\n- id: channel_grids\n  operator: read_item@1.0\n  inputs: {}\n  params:\n    uri: $CHANNEL_GRIDS_URI\n    view: bytes\n- id: spatial_overlap\n  operator: check_dam_overlap@1.1\n  inputs:\n    a_hazards: susceptible_channels\n    b_candidates: candidate_sites\n    c_grids: channel_grids\n  params:\n    operation: overlap\n    region: $REGION\n    region_bbox: $REGION_BBOX\n    bias: 3\n- id: distribution_map\n  operator: check_dam_map@1.1\n  inputs:\n    source: spatial_overlap\n  params:\n    operation: map\n    region: $REGION\n    region_bbox: $REGION_BBOX\noutputs:\n  map: distribution_map\n",
+  "engine_jar_sha256": {
+    "io.github.rdcn-link.xstream-data-netcdf_2.13-0.1.0-SNAPSHOT.jar": "64490a7ba258ba2987b582f4db73fb6a6d1b6a3e365fae17895c6900a8e86a5c",
+    "io.github.rdcn-link.xstream-data-scientific-views_2.13-0.1.0-SNAPSHOT.jar": "36f00ae5d82a53328b4d38a5e85e2aa6f7140759867c28195f6b973237cd63e1",
+    "io.github.rdcn-link.xstream-data-mounted_2.13-0.1.0-SNAPSHOT.jar": "e0dd75ce7b78d91846a4bd0f603eb4e260e74ba7ae91231ab6d4b63381229c99",
+    "io.github.rdcn-link.xstream-data-archives_2.13-0.1.0-SNAPSHOT.jar": "27f185b3f298a33bdca28be5635947180d02e275556bdce065ac1277e20207b7",
+    "io.github.rdcn-link.xstream-plugin-operator-executors_2.13-0.1.0-SNAPSHOT.jar": "a246c977757eb382bd96343b86ca11735857569130f6a1110ed8814f0ea43379",
+    "io.github.rdcn-link.xstream-operator-inference_2.13-0.1.0-SNAPSHOT.jar": "426a98311d4270646c8c0178365d1171992025b113994a6efcd5469cc9f6944f",
+    "io.github.rdcn-link.xstream-engine_2.13-0.1.0-SNAPSHOT.jar": "395261f93b19e64f80a9f522bce0617c68f3deb521013c23057b870d8757f074",
+    "io.github.rdcn-link.xstream-plugin-execution-file_2.13-0.1.0-SNAPSHOT.jar": "89f14b6d9df482e2f176ab76f2d200e7d8323e8d1b4f71f5117b3c5dc16fafb8",
+    "io.github.rdcn-link.xstream-data-files_2.13-0.1.0-SNAPSHOT.jar": "49cb90a2ea4f20d8ef6d0551c2330e7669d0454bfbc5cc414118c78efeae1c6e",
+    "io.github.rdcn-link.xstream-data-excel_2.13-0.1.0-SNAPSHOT.jar": "988ebfba67e41128be36a21dc14e90e13d10f60c860307ba1c07a5d63d35bc02",
+    "io.github.rdcn-link.xstream-execution-api_2.13-0.1.0-SNAPSHOT.jar": "c5e1b5c4b7691ac4b94867aa69a943f649f32b78d749b4b8d9b45a32673250ce",
+    "io.github.rdcn-link.xstream-data-parquet_2.13-0.1.0-SNAPSHOT.jar": "e0b677b74e0a97507828b179709c90549b0ba24e910dbbc89993d8b884e8e9ee",
+    "io.github.rdcn-link.xstream-operator-sdk_2.13-0.1.0-SNAPSHOT.jar": "e16b0346680f9e37973ea8a57c7b86af41c23de8bf52d447e89bee33c3aa5d67",
+    "io.github.rdcn-link.xstream-data-formats-basic_2.13-0.1.0-SNAPSHOT.jar": "7a1ee94c613fbfb081d691536ef65bd85ba01970d1b69c4197f56dc6361d04a8",
+    "io.github.rdcn-link.xstream-data-fits_2.13-0.1.0-SNAPSHOT.jar": "07034534ab2079392a1b442e11de1bdc74e0cb6a68258717be22ca8544ef5dfd",
+    "io.github.rdcn-link.xstream-dacp-protocol_2.13-0.1.0-SNAPSHOT.jar": "3b62ed3ea81e69dc2870d7127970a691112d83d2744fcb4d845fc64b62538674",
+    "io.github.rdcn-link.xstream-data-fasta_2.13-0.1.0-SNAPSHOT.jar": "5f864db2f8fd33d2422646fb6f9d06756df8970c1e5577b378db4c0ecc740fa9",
+    "io.github.rdcn-link.xstream-data-catalog-static_2.13-0.1.0-SNAPSHOT.jar": "c7de74fd9f22cb6d841fe38a05754df8442db293c8040cb532928a789d54860e",
+    "io.github.rdcn-link.xstream-operator-contract_2.13-0.1.0-SNAPSHOT.jar": "2759f3b6d18b24f515ce0d3d0096389d6c021fcea629a6212c195de07f98d747",
+    "io.github.rdcn-link.xstream-data-core_2.13-0.1.0-SNAPSHOT.jar": "e13d40849cea219deac210037bdba5e94f56b9d35799b01e64f533a14f64abc9"
+  },
+  "samples": [
+    {
+      "repeat": -1,
+      "warmup": true,
+      "method": "conet-union",
+      "state": "succeeded",
+      "wall_s": 83.96079357992858,
+      "app_completion_s": 83.95895389886573,
+      "result_fetch_validation_s": 0.0018396810628473759,
+      "run_id": "18df36eaae8945ac8d17eea0dd237f4d",
+      "job_id": "241be1b9-17c8-4a36-a899-bd992e90de1b",
+      "created_at": "2026-11-08T11:48:15.968583517Z",
+      "started_at": "2026-11-08T11:48:18.982988503Z",
+      "finished_at": "2026-11-08T11:49:39.875280092Z",
+      "placements": [
+        {
+          "center": "a",
+          "steps": [
+            "terrain_data",
+            "terrain_metrics",
+            "susceptible_channels"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "c",
+          "steps": [
+            "channel_grids"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "b",
+          "steps": [
+            "imagery",
+            "candidate_sites",
+            "spatial_overlap",
+            "distribution_map"
+          ],
+          "state": "succeeded"
+        }
+      ],
+      "observed_remote_output_payload_bytes": 185218313,
+      "output_ports": [
+        {
+          "port": "candidate_sites/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "distribution_map/outputs/result",
+          "remote_payload_bytes": 14814
+        },
+        {
+          "port": "imagery/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "spatial_overlap/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "channel_grids/outputs/result",
+          "remote_payload_bytes": 185180160
+        },
+        {
+          "port": "susceptible_channels/outputs/result",
+          "remote_payload_bytes": 23339
+        },
+        {
+          "port": "terrain_data/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "terrain_metrics/outputs/result",
+          "remote_payload_bytes": 0
+        }
+      ],
+      "union_elapsed_s": 83.554,
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "3c0a9fe76e965ef7822b5a5d00353303544a9a196211bd9000b3e5528fd6a223",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": -1,
+      "warmup": true,
+      "method": "ftp-download-local",
+      "state": "succeeded",
+      "wall_s": 73.60927529796027,
+      "download_s": 1.9157477859407663,
+      "compute_s": 71.6924638969358,
+      "validation_s": 0.001063615083694458,
+      "downloaded_bytes": 1018060800,
+      "downloads": [
+        {
+          "source": "TERRAIN_URI",
+          "protocol": "ftp",
+          "bytes": 277760000,
+          "sha256": "eda7082e65f3113f3eec5ea5a85b6b34e90544e6d941ecd3335f88e9b319d4c4",
+          "wall_s": 1.006944787921384
+        },
+        {
+          "source": "IMAGERY_URI",
+          "protocol": "ftp",
+          "bytes": 555120640,
+          "sha256": "cb4f2daf2a2397aeb1e26a24c06eb3eb637fac68c19abacb5e071f7357c83ded",
+          "wall_s": 1.9140160330571234
+        },
+        {
+          "source": "CHANNEL_GRIDS_URI",
+          "protocol": "ftp",
+          "bytes": 185180160,
+          "sha256": "ba58cd963acbddf8741688af11019fbb82cbfb30cef93a63edfccdb24dde780f",
+          "wall_s": 0.687575058080256
+        }
+      ],
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "b6bba42e717d4c96a4c6a0aefd59530f32a34a2bb252987d37b173b0fba41f57",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": 0,
+      "warmup": false,
+      "method": "conet-union",
+      "state": "succeeded",
+      "wall_s": 78.94063259195536,
+      "app_completion_s": 78.93841757904738,
+      "result_fetch_validation_s": 0.0022150129079818726,
+      "run_id": "aa060fd3b8f34e0da32a4fed9f816c3a",
+      "job_id": "3c1b12b1-4c28-4500-9240-6b5d09dde6ef",
+      "created_at": "2026-11-08T11:50:53.550339123Z",
+      "started_at": "2026-11-08T11:50:57.463201829Z",
+      "finished_at": "2026-11-08T11:52:12.405268946Z",
+      "placements": [
+        {
+          "center": "a",
+          "steps": [
+            "terrain_data",
+            "terrain_metrics",
+            "susceptible_channels"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "c",
+          "steps": [
+            "channel_grids"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "b",
+          "steps": [
+            "imagery",
+            "candidate_sites",
+            "spatial_overlap",
+            "distribution_map"
+          ],
+          "state": "succeeded"
+        }
+      ],
+      "observed_remote_output_payload_bytes": 185218313,
+      "output_ports": [
+        {
+          "port": "candidate_sites/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "distribution_map/outputs/result",
+          "remote_payload_bytes": 14814
+        },
+        {
+          "port": "imagery/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "spatial_overlap/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "channel_grids/outputs/result",
+          "remote_payload_bytes": 185180160
+        },
+        {
+          "port": "susceptible_channels/outputs/result",
+          "remote_payload_bytes": 23339
+        },
+        {
+          "port": "terrain_data/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "terrain_metrics/outputs/result",
+          "remote_payload_bytes": 0
+        }
+      ],
+      "union_elapsed_s": 77.763,
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "3c0a9fe76e965ef7822b5a5d00353303544a9a196211bd9000b3e5528fd6a223",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": 0,
+      "warmup": false,
+      "method": "ftp-download-local",
+      "state": "succeeded",
+      "wall_s": 110.29709605197422,
+      "download_s": 1.8544248009566218,
+      "compute_s": 108.44167453516275,
+      "validation_s": 0.0009967158548533916,
+      "downloaded_bytes": 1018060800,
+      "downloads": [
+        {
+          "source": "TERRAIN_URI",
+          "protocol": "ftp",
+          "bytes": 277760000,
+          "sha256": "eda7082e65f3113f3eec5ea5a85b6b34e90544e6d941ecd3335f88e9b319d4c4",
+          "wall_s": 0.9607796920463443
+        },
+        {
+          "source": "IMAGERY_URI",
+          "protocol": "ftp",
+          "bytes": 555120640,
+          "sha256": "cb4f2daf2a2397aeb1e26a24c06eb3eb637fac68c19abacb5e071f7357c83ded",
+          "wall_s": 1.8533279669936746
+        },
+        {
+          "source": "CHANNEL_GRIDS_URI",
+          "protocol": "ftp",
+          "bytes": 185180160,
+          "sha256": "ba58cd963acbddf8741688af11019fbb82cbfb30cef93a63edfccdb24dde780f",
+          "wall_s": 0.6686854341533035
+        }
+      ],
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "b6bba42e717d4c96a4c6a0aefd59530f32a34a2bb252987d37b173b0fba41f57",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": 1,
+      "warmup": false,
+      "method": "ftp-download-local",
+      "state": "succeeded",
+      "wall_s": 155.68753103492782,
+      "download_s": 1.871178959030658,
+      "compute_s": 153.8154336309526,
+      "validation_s": 0.0009184449445456266,
+      "downloaded_bytes": 1018060800,
+      "downloads": [
+        {
+          "source": "TERRAIN_URI",
+          "protocol": "ftp",
+          "bytes": 277760000,
+          "sha256": "eda7082e65f3113f3eec5ea5a85b6b34e90544e6d941ecd3335f88e9b319d4c4",
+          "wall_s": 0.9534179598558694
+        },
+        {
+          "source": "IMAGERY_URI",
+          "protocol": "ftp",
+          "bytes": 555120640,
+          "sha256": "cb4f2daf2a2397aeb1e26a24c06eb3eb637fac68c19abacb5e071f7357c83ded",
+          "wall_s": 1.870199236087501
+        },
+        {
+          "source": "CHANNEL_GRIDS_URI",
+          "protocol": "ftp",
+          "bytes": 185180160,
+          "sha256": "ba58cd963acbddf8741688af11019fbb82cbfb30cef93a63edfccdb24dde780f",
+          "wall_s": 0.6674585901200771
+        }
+      ],
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "b6bba42e717d4c96a4c6a0aefd59530f32a34a2bb252987d37b173b0fba41f57",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": 1,
+      "warmup": false,
+      "method": "conet-union",
+      "state": "succeeded",
+      "wall_s": 63.429239484947175,
+      "app_completion_s": 63.42747214902192,
+      "result_fetch_validation_s": 0.0017673359252512455,
+      "run_id": "57c4aac555c046af9c939fd81c63335a",
+      "job_id": "9ea11ec4-b8b2-4bb4-9fed-052fbd693db7",
+      "created_at": "2026-11-08T11:56:38.567421191Z",
+      "started_at": "2026-11-08T11:56:38.987837144Z",
+      "finished_at": "2026-11-08T11:57:41.813680413Z",
+      "placements": [
+        {
+          "center": "a",
+          "steps": [
+            "terrain_data",
+            "terrain_metrics",
+            "susceptible_channels"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "c",
+          "steps": [
+            "channel_grids"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "b",
+          "steps": [
+            "imagery",
+            "candidate_sites",
+            "spatial_overlap",
+            "distribution_map"
+          ],
+          "state": "succeeded"
+        }
+      ],
+      "observed_remote_output_payload_bytes": 185218313,
+      "output_ports": [
+        {
+          "port": "candidate_sites/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "distribution_map/outputs/result",
+          "remote_payload_bytes": 14814
+        },
+        {
+          "port": "imagery/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "spatial_overlap/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "channel_grids/outputs/result",
+          "remote_payload_bytes": 185180160
+        },
+        {
+          "port": "susceptible_channels/outputs/result",
+          "remote_payload_bytes": 23339
+        },
+        {
+          "port": "terrain_data/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "terrain_metrics/outputs/result",
+          "remote_payload_bytes": 0
+        }
+      ],
+      "union_elapsed_s": 62.779,
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "3c0a9fe76e965ef7822b5a5d00353303544a9a196211bd9000b3e5528fd6a223",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": 2,
+      "warmup": false,
+      "method": "conet-union",
+      "state": "succeeded",
+      "wall_s": 90.82089829118922,
+      "app_completion_s": 90.81908193021081,
+      "result_fetch_validation_s": 0.001816360978409648,
+      "run_id": "d807b03bcfde4166a8a00ebc85c27785",
+      "job_id": "a373753d-8416-42b7-bbc8-e2caf628cc58",
+      "created_at": "2026-11-08T11:57:42.004214246Z",
+      "started_at": "2026-11-08T11:57:42.531233631Z",
+      "finished_at": "2026-11-08T11:59:12.699333141Z",
+      "placements": [
+        {
+          "center": "a",
+          "steps": [
+            "terrain_data",
+            "terrain_metrics",
+            "susceptible_channels"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "c",
+          "steps": [
+            "channel_grids"
+          ],
+          "state": "succeeded"
+        },
+        {
+          "center": "b",
+          "steps": [
+            "imagery",
+            "candidate_sites",
+            "spatial_overlap",
+            "distribution_map"
+          ],
+          "state": "succeeded"
+        }
+      ],
+      "observed_remote_output_payload_bytes": 185218313,
+      "output_ports": [
+        {
+          "port": "candidate_sites/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "distribution_map/outputs/result",
+          "remote_payload_bytes": 14814
+        },
+        {
+          "port": "imagery/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "spatial_overlap/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "channel_grids/outputs/result",
+          "remote_payload_bytes": 185180160
+        },
+        {
+          "port": "susceptible_channels/outputs/result",
+          "remote_payload_bytes": 23339
+        },
+        {
+          "port": "terrain_data/outputs/result",
+          "remote_payload_bytes": 0
+        },
+        {
+          "port": "terrain_metrics/outputs/result",
+          "remote_payload_bytes": 0
+        }
+      ],
+      "union_elapsed_s": 88.945,
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "3c0a9fe76e965ef7822b5a5d00353303544a9a196211bd9000b3e5528fd6a223",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    },
+    {
+      "repeat": 2,
+      "warmup": false,
+      "method": "ftp-download-local",
+      "state": "succeeded",
+      "wall_s": 68.39859515591525,
+      "download_s": 1.8625775598920882,
+      "compute_s": 66.53506105602719,
+      "validation_s": 0.0009565399959683418,
+      "downloaded_bytes": 1018060800,
+      "downloads": [
+        {
+          "source": "TERRAIN_URI",
+          "protocol": "ftp",
+          "bytes": 277760000,
+          "sha256": "eda7082e65f3113f3eec5ea5a85b6b34e90544e6d941ecd3335f88e9b319d4c4",
+          "wall_s": 1.0187437019776553
+        },
+        {
+          "source": "IMAGERY_URI",
+          "protocol": "ftp",
+          "bytes": 555120640,
+          "sha256": "cb4f2daf2a2397aeb1e26a24c06eb3eb637fac68c19abacb5e071f7357c83ded",
+          "wall_s": 1.861495928838849
+        },
+        {
+          "source": "CHANNEL_GRIDS_URI",
+          "protocol": "ftp",
+          "bytes": 185180160,
+          "sha256": "ba58cd963acbddf8741688af11019fbb82cbfb30cef93a63edfccdb24dde780f",
+          "wall_s": 0.6518715200945735
+        }
+      ],
+      "result_sha256": "d4014464d82a0e8b8769ef23bd77b449763027df2da43a7e0ea55af4b1ef04f8",
+      "svg_sha256": "b6bba42e717d4c96a4c6a0aefd59530f32a34a2bb252987d37b173b0fba41f57",
+      "result_bytes": 14814,
+      "valid_sites": 3,
+      "rejected": 4,
+      "candidate_count": 5,
+      "windows_inferred": 361
+    }
+  ]
+}
