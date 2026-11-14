@@ -1,6 +1,6 @@
 # Application packages
 
-A CONET application package (`*.conet.zip`) is the portable delivery unit for an application. It contains its input form, variable bindings, result presentation and fixed XStream Job. Import it into App Builder, review its dependencies, then choose **Load and publish**. Loading registers the application and immediately provides `/apps/<id>/`; users submit analysis from that address. Import alone creates an editable draft and does not execute a Job or publish an application.
+A CONET application package (`*.conetapp`) is the portable delivery unit for an application. It contains its input form, variable bindings, result presentation and fixed XStream Job. Import it into App Builder, review its dependencies, then choose **Load and publish**. Loading registers the application and immediately provides `/apps/<id>/`; users submit analysis from that address. Import alone creates an editable draft and does not execute a Job or publish an application.
 
 ```mermaid
 flowchart LR
@@ -12,10 +12,12 @@ flowchart LR
   W --> R[Submit analysis]
 ```
 
+The `.conetapp` extension identifies CONET applications. The file uses standard ZIP format and can be inspected with ZIP tools. HTTP exports retain `Content-Type: application/zip`.
+
 ## Contents
 
 ```text
-application.conet.zip
+application.conetapp
 ├── manifest.json
 ├── application.yaml
 ├── job.yaml
@@ -46,7 +48,7 @@ Packages are limited to 4 MiB compressed and expanded, with at most the seven ex
 | `POST /api/appbuilder/apps` | Load/publish the reviewed draft with its revision when updating |
 
 ```bash
-python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conet.zip
+python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conetapp
 ```
 
 Import the ZIP through App Builder. Use [file inputs](file-inputs.md) for upload configuration and the ready-to-run CSV example. The helper packages `application.yaml` and `job.yaml`; use App Builder export to embed custom uploaded cover resources.

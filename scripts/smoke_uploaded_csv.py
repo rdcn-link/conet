@@ -11,7 +11,7 @@ async def main():
    z.writestr('manifest.json',json.dumps(manifest))
    for name in ['application.yaml','job.yaml']:z.writestr(name,(root/'examples/uploaded-csv'/name).read_bytes())
   await page.goto(base+'/appbuilder/');await page.wait_for_selector('#apps .app-card')
-  await page.locator('#package-file').set_input_files({'name':'uploaded-csv.conet.zip','mimeType':'application/zip','buffer':out.getvalue()})
+  await page.locator('#package-file').set_input_files({'name':'uploaded-csv.conetapp','mimeType':'application/zip','buffer':out.getvalue()})
   await page.wait_for_function("document.querySelector('#notice').textContent.includes('程序包已导入草稿')")
   assert await page.locator('[data-editor]').first.get_attribute('data-editor')=='job'
   assert await page.locator('#job-visual').is_visible()

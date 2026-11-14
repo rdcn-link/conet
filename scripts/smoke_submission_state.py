@@ -16,7 +16,7 @@ async def main():
    if transient:transient=False;await route.fulfill(status=503,json={'error':'暂时不可用'});return
    await route.fulfill(json={'id':'test-run','state':state,'created_at':'2026-01-01T00:00:00Z','execution':{'steps':[]}})
   await page.route('**/apps/uploaded-csv/api/jobs',jobs);await page.route('**/apps/uploaded-csv/api/jobs/test-run**',status)
-  await page.goto('http://127.0.0.1:8870/apps/uploaded-csv/');await page.wait_for_selector('select[aria-label="数据输入方式"]');await page.get_by_label('数据输入方式').select_option('remote');await page.get_by_label('远程 DACP Item URI').fill('dacp://example.invalid:8815/ds/input.csv')
+  await page.goto('http://127.0.0.1:8870/apps/uploaded-csv/');await page.wait_for_selector('.file-upload [role=radiogroup]');await page.get_by_role('radio',name='Item URI 输入',exact=True).check();await page.get_by_label('远程 DACP Item URI').fill('dacp://example.invalid:8815/ds/input.csv')
   button=page.locator('#submit');await button.click();assert await button.is_disabled()
   await page.locator('#form').dispatch_event('submit');await asyncio.sleep(.7);assert posts==1
   await page.wait_for_function("document.querySelector('#job-state').textContent==='排队中'");assert await button.is_disabled()

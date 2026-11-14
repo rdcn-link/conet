@@ -3,6 +3,7 @@
 import argparse,json,zipfile
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('directory',type=Path);p.add_argument('output',type=Path);args=p.parse_args()
+if args.output.suffix != '.conetapp':p.error('Output must use the .conetapp extension (ZIP format)')
 for name in ('application.yaml','job.yaml'):
  if not (args.directory/name).is_file():p.error('Missing '+name)
 args.output.parent.mkdir(parents=True,exist_ok=True)

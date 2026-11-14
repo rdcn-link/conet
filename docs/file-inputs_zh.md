@@ -60,13 +60,28 @@ hosting:
 
 `POST /apps/<app>/api/uploads/<field>` 接收 `application/octet-stream` 请求体，通过百分号编码的 `X-File-Name` 请求头传递文件名，保留同源修改检查。返回 `upload_id`、文件名、大小、SHA-256、视图和过期时间，再向 `/apps/<app>/api/jobs` 提交 `{"source":{"upload_id":"<id>"}}`。上传引用只适用于对应应用及字段。预览校验引用，仅正式提交时分配运行 Item。
 
-参见 [CSV 应用](../examples/uploaded-csv/application.yaml) 和 [JSON 应用](../examples/uploaded-json/application.yaml)。CSV 应用通过真实 Union Job 读取原始文件，再由 `csv-table` 成果展示插件生成表格与数值字段统计。这是受限的文件分析示例，不是分布式聚合基准。支持 UTF-8 CSV、可选 BOM、引号和多行单元格，最多 16 MiB、100000 行、256 个唯一字段。保留文本值，统计有限数值单元格。预览前 200 行，CSV 下载包含全部受理记录并转义电子表格公式；还可下载统计、分析 JSON、溯源元数据及报告。
+参见 [CSV 应用](../examples/uploaded-csv/application.yaml) 和 [JSON 应用](../examples/uploaded-json/application.yaml)。CSV 应用通过真实 Union Job 读取原始文件，再由 `csv-table` 成果展示插件生成表格与数值字段统计。这是受限的文件分析示例，不是分布式聚合基准。支持 UTF-8 CSV、可选 BOM、引号和多行单元格，最多 16 MiB、100000 行、256 个唯一字段。保留文本值，统计有限数值单元格。预览前 10 行，CSV 下载包含全部受理记录并转义电子表格公式；还可下载统计、分析 JSON、溯源元数据及报告。
 
 ```bash
-python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conet.zip
+python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conetapp
 python3 scripts/smoke_uploaded_csv.py --url http://127.0.0.1:8870
+python3 scripts/smoke_input_retention.py --url http://127.0.0.1:8870
 ```
 
 ## 使用远程 Item
 
 文件输入提供“上传文件”和“远程 DACP Item”两种方式。远程方式提交 `{"uri":"dacp://host:port/dataset/item.csv"}`，绑定同一个 Job 变量，不创建本地上传副本。服务端校验路径、所需 View 和已知文件大小；远程目录仅在明确提供 bytes 且输入需要 bytes 时接受。URI 不接受账号、查询参数或片段。连接使用已配置的 CA 验证服务器身份，不将 Union 凭据转发到用户指定的地址。执行端仍须能够访问并读取该 Item。
+
+## 复用分析输入
+
+App 和工作空间的分析历史显示输入可用状态、文件名和自动清理时间。**长期保留输入**固定保存当次上传快照，仍不公开，并计入输入存储配额。**恢复自动清理**为已结束的运行重新开始计算配置的保留期；执行中的输入一直保留到运行结束。结果产品发布与上传输入保留相互独立。
+
+**重新运行**根据保存的 Job、应用定义、清单、参数和数据集绑定创建新的分析，应用后来被编辑也不会改变这些历史设置。上传文件来自原运行的快照，不依赖暂存上传引用。提交前检查过期时间、文件存在性、安全路径、大小和 SHA-256；输入过期、丢失或内容改变时需重新上传。新运行拥有独立的输入 URI 和保留期。任务排队限制、取消及存储配额同样适用于重新运行。远程 Item 会重新校验，但不会保存快照；其内容可能改变，因此不保证结果完全相同。
+
+- `GET /apps/<app>/api/jobs/<run>/inputs`：查询输入状态和过期时间。
+- `POST /apps/<app>/api/jobs/<run>/inputs/retention`，请求体 `{"keep":true}` 长期保留；`false` 恢复自动清理。
+- `POST /apps/<app>/api/jobs/<run>/rerun`，请求体 `{}`，复用历史输入，不接受替换参数；应用必须在线。
+
+### 共享节点执行权限
+
+`bin/conet hosting-up`确保共享节点已注册，并在 Union 的 `trusted_job_sources` 中配置 `conet-app` 服务账号及该节点的准确 DACP 来源地址。更新已有配置要求 Union 空闲，仅在配置变化时重启 Union。这允许服务使用非公开上传输入执行任务，无需将这些数据集列入目录或公开发布。其他客户端和来源仍进行正常的发布策略检查。共享节点通过绑定证书的成员凭据授权 Union。不要向访客提供服务 token。

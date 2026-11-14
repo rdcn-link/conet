@@ -65,8 +65,23 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
  if(Files.isDirectory(state.resolve("web-jobs")))Using.resource(Files.list(state.resolve("web-jobs"))){files=>files.iterator.asScala.filter(_.toString.endsWith(".json")).foreach{p=>val j=Values.copy(Json.mapper.readTree(Files.readAllBytes(p)));j.put("app_id",id);require(j.path("id").asText.matches("[a-zA-Z0-9-]{1,100}"),"任务记录编号无效");if(Set("queued","running")(j.path("state").asText)){j.put("state","interrupted").put("error","应用服务已重启，请先在 Union 看板核对原任务再决定是否重新提交");save(j)};jobs(j.path("id").asText)=j}}
  def config:JsonNode={val n=Values.obj.put("job_yaml",definition.jobYaml);n.set[JsonNode]("application",definition.publicConfig);n.set[JsonNode]("manifest",manifest());n.set[JsonNode]("web_urls",backend.webUrls);n}
  def records:Vector[JsonNode]=synchronized{jobs.values.toVector.map(Values.copy)}
- def list:JsonNode=synchronized{Values.array(jobs.values.toVector.sortBy(_.path("created_at").asText).reverse.map{j=>val n=Values.copy(j);n.remove("result");n.remove("execution");n.remove("definition");n.remove("job_yaml");n.remove("resolved_job_yaml");n})}
- def get(identifier:String):Option[JsonNode]=synchronized{jobs.get(identifier).map(Values.copy)}
+ def list:JsonNode=synchronized{Values.array(jobs.values.toVector.sortBy(_.path("created_at").asText).reverse.map{j=>val n=Values.copy(j);n.remove("result");n.remove("execution");n.remove("definition");n.remove("job_yaml");n.remove("resolved_job_yaml");n.remove("manifest_snapshot");n.remove("replay_variables");withInputs(n)})}
+ private def runDefinition(record:JsonNode):Definition={require(record.path("definition").isObject&&record.path("job_yaml").isTextual,"历史记录缺少应用或 Job 快照，无法重新运行");Definition.parse(YamlDocument.dump(record.path("definition")),record.path("job_yaml").asText)}
+ private def withInputs(record:ObjectNode):ObjectNode={
+  try{record.set[JsonNode]("input_retention",inputFiles.status(runDefinition(jobs(record.path("id").asText)),record))}catch{case _:IllegalArgumentException=>record.set[JsonNode]("input_retention",Values.obj.put("available",false).put("reason","历史记录缺少可复用的输入快照"))}
+  record
+ }
+ def get(identifier:String):Option[JsonNode]=synchronized{jobs.get(identifier).map(j=>withInputs(Values.copy(j)))}
+ def inputStatus(identifier:String):JsonNode=get(identifier).getOrElse(throw new IllegalArgumentException("分析记录不存在")).path("input_retention")
+ def retainInputs(identifier:String,keep:Boolean):JsonNode=synchronized{val record=jobs.getOrElse(identifier,throw new IllegalArgumentException("分析记录不存在"));inputFiles.retain(runDefinition(record),record,keep)}
+ def rerun(identifier:String,submittedBy:Option[JsonNode]=None):(Int,JsonNode)=synchronized{
+  val record=Values.copy(jobs.getOrElse(identifier,throw new IllegalArgumentException("分析记录不存在")))
+  require(!Set("queued","running")(record.path("state").asText),"分析仍在执行，请等待完成后重新运行")
+  val d=runDefinition(record);val current=inputFiles.status(d,record);require(current.path("available").asBoolean,current.path("reason").asText("输入不可用，请重新上传文件"))
+  val payload=Values.obj;d.inputs.foreach(f=>Option(record.get(f.path("name").asText)).foreach(v=>payload.set[JsonNode](f.path("name").asText,v.deepCopy[JsonNode]())))
+  d.fileFields.foreach{case(key,_)=>val value=record.at("/"+key.replace('.', '/'));if(!value.isMissingNode){val parts=key.split("\\.");val parent=parts.dropRight(1).foldLeft(payload:JsonNode)((n,k)=>n.path(k)).asInstanceOf[ObjectNode];parent.set[JsonNode](parts.last,if(value.has("upload_id"))Values.obj.put("upload_id",value.path("upload_id").asText)else Values.obj.put("uri",value.path("uri").asText))}}
+  submitRun(payload,submittedBy,d,Some(record))
+ }
  def plan(identifier:String):JsonNode={
   val run=get(identifier).getOrElse(throw new IllegalArgumentException("分析记录不存在"))
   val yaml=if(run.path("resolved_job_yaml").isTextual)run.path("resolved_job_yaml").asText else{
@@ -79,17 +94,20 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
  private def update(identifier:String)(f:ObjectNode=>Unit):Unit=synchronized{val j=jobs(identifier);f(j);save(j)}
  def upload(field:String,name:String,stream:java.io.InputStream):JsonNode=inputFiles.upload(definition,field,name,stream)
  def preview(payload:JsonNode):JsonNode={val input=inputFiles.resolve(definition,definition.validate(payload,manifest()),None);val bindings=definition.variableBindings.filterNot(_._2.has("dataset"));val v=Values.obj;bindings.foreach{case(k,b)=>if(b.has("input")){val value=input.at("/"+b.path("input").asText.replace(".","/"));v.set[JsonNode](k,if(value.isObject&&value.has("upload_id"))value.path("uri")else value)}};val n=Values.obj;n.set[JsonNode]("inputs",input);n.set[JsonNode]("input_variables",v);n.put("job_yaml",definition.jobYaml);n}
- def submit(payload:JsonNode,submittedBy:Option[JsonNode]=None):(Int,JsonNode)=synchronized{
+ def submit(payload:JsonNode,submittedBy:Option[JsonNode]=None):(Int,JsonNode)=submitRun(payload,submittedBy,definition,None)
+ private def submitRun(payload:JsonNode,submittedBy:Option[JsonNode],definition:Definition,previous:Option[JsonNode]):(Int,JsonNode)=synchronized{
   if(closed)return(503,Values.obj.put("error","分析服务正在关闭"))
-  val validated=definition.validate(payload,manifest());if(jobs.values.count(j=>Set("queued","running")(j.path("state").asText))>=definition.config.path("limits").path("max_queued").asInt(4))return(429,Values.obj.put("error","任务队列已满，请等待当前分析完成"))
+  val manifestSnapshot=previous.filter(_.path("manifest_snapshot").isObject).map(_.path("manifest_snapshot")).getOrElse(manifest());val validated=definition.validate(payload,manifestSnapshot);if(jobs.values.count(j=>Set("queued","running")(j.path("state").asText))>=definition.config.path("limits").path("max_queued").asInt(4))return(429,Values.obj.put("error","任务队列已满，请等待当前分析完成"))
   val identifier=java.util.UUID.randomUUID.toString.replace("-","")
   val rejected=admission.submit(id,identifier,state){
-  val input=inputFiles.resolve(definition,validated,Some(identifier));input.put("id",identifier).put("state","queued").put("created_at",now).put("synthetic",definition.config.path("synthetic").asBoolean(true));input.set[JsonNode]("definition",definition.publicConfig);input.put("job_yaml",definition.jobYaml);input.put("app_id",id);submittedBy.foreach(a=>input.set[JsonNode]("submitted_by",a))
+  val input=previous.map(record=>inputFiles.replay(definition,record,validated,identifier)).getOrElse(inputFiles.resolve(definition,validated,Some(identifier)))
+  input.set[JsonNode]("manifest_snapshot",manifestSnapshot);previous.foreach{record=>input.put("rerun_of",record.path("id").asText);if(record.path("variables").isObject)input.set[JsonNode]("replay_variables",record.path("variables"));if(record.path("dataset_bindings").isArray)input.set[JsonNode]("dataset_bindings",record.path("dataset_bindings"))}
+  input.put("id",identifier).put("state","queued").put("created_at",now).put("synthetic",definition.config.path("synthetic").asBoolean(true));input.set[JsonNode]("definition",definition.publicConfig);input.put("job_yaml",definition.jobYaml);input.put("app_id",id);submittedBy.foreach(a=>input.set[JsonNode]("submitted_by",a))
   val stepOperators=Values.obj;YamlDocument.parse(definition.jobYaml).path("steps").elements.asScala.foreach(s=>stepOperators.put(s.path("id").asText,s.path("operator").asText));input.set[JsonNode]("step_operators",stepOperators)
   save(input);jobs(identifier)=input;val control=new JobControl();controls.put(identifier,control)
   ()=>execute(identifier,control)
   }
-  rejected match{case Some((code,message))=>(code,Values.obj.put("error",message));case None=>(202,Values.copy(jobs(identifier)))}
+  rejected match{case Some((code,message))=>(code,Values.obj.put("error",message));case None=>(202,withInputs(Values.copy(jobs(identifier))))}
  }
  def cancel(identifier:String):Option[JsonNode]={
   val control=synchronized{jobs.get(identifier).filter(j=>Set("queued","running")(j.path("state").asText)).map{j=>j.put("state","cancelled").put("finished_at",now);save(j);Option(controls.get(identifier))}}
@@ -98,9 +116,11 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
  private def execute(identifier:String,control:JobControl):Unit={
   val output=state.resolve("results").resolve(identifier)
   try {
-   control.check();admission.checkDisk(state);val job=get(identifier).get;val m=manifest();val scope=definition.config.path("data").path("scope").asText(id)
-   val datasets=if(definition.variableBindings.values.exists(_.has("dataset")))backend.datasets(scope)else Map.empty[String,String]
-   control.check();val vars=definition.variables(job,m,datasets)
+   control.check();admission.checkDisk(state);val job=get(identifier).get;val definition=runDefinition(job);val m=if(job.path("manifest_snapshot").isObject)job.path("manifest_snapshot")else manifest();val scope=definition.config.path("data").path("scope").asText(id)
+   val datasets=if(job.path("replay_variables").isObject)job.path("dataset_bindings").elements.asScala.map(n=>n.path("name").asText->n.path("uri").asText).toMap else if(definition.variableBindings.values.exists(_.has("dataset")))backend.datasets(scope)else Map.empty[String,String]
+   control.check();val vars=if(job.path("replay_variables").isObject){
+    val values=Values.copy(job.path("replay_variables"));definition.variableBindings.foreach{case(key,b)=>if(b.has("input")){val v=job.at("/"+b.path("input").asText.replace('.', '/'));values.set[JsonNode](key,if(v.isObject&&definition.fileFields.exists(_._1==b.path("input").asText))v.path("uri")else v)}};values
+   }else definition.variables(job,m,datasets)
    val resolved=YamlDocument.parse(WorkflowVariables.resolve(definition.jobYaml,vars))
    val bindings=Values.array(datasets.toVector.map{case(name,uri)=>val n=Values.obj.put("name",name).put("uri",uri);val ids=resolved.path("steps").elements.asScala.filter(s=>s.path("operator").asText.startsWith("read_item@")&&s.path("params").path("uri").asText.startsWith(uri.stripSuffix("/")+"/")).map(s=>Json.mapper.getNodeFactory.textNode(s.path("id").asText)).toVector;n.set[JsonNode]("steps",Values.array(ids));n})
    update(identifier){j=>j.set[JsonNode]("dataset_bindings",bindings);j.set[JsonNode]("variables",vars);j.put("resolved_job_yaml",YamlDocument.dump(resolved))}

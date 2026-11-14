@@ -60,13 +60,28 @@ Staged files expire after the configured number of days. Run inputs remain reada
 
 `POST /apps/<app>/api/uploads/<field>` accepts an `application/octet-stream` body and a percent-encoded `X-File-Name` header, with the normal same-origin mutation check. It returns `upload_id`, name, bytes, SHA-256, view and expiration. Then submit `{"source":{"upload_id":"<id>"}}` to `/apps/<app>/api/jobs`. The upload reference is scoped to that application and field. Preview validates references but allocates run Items only on submission.
 
-See [CSV application](../examples/uploaded-csv/application.yaml) and [JSON application](../examples/uploaded-json/application.yaml). The CSV application reads original bytes through a real Union Job, then uses the `csv-table` presentation plugin for tables and numeric-column statistics. It is a bounded file-analysis example, not a distributed aggregation benchmark. It supports UTF-8 CSV with optional BOM, quoted/multiline cells, at most 16 MiB, 100,000 rows and 256 unique columns. Values stay textual; statistics count finite numeric cells. Preview shows the first 200 rows; CSV downloads include all accepted rows and escape spreadsheet formulas. Statistics, analysis JSON, provenance and reports are also downloadable.
+See [CSV application](../examples/uploaded-csv/application.yaml) and [JSON application](../examples/uploaded-json/application.yaml). The CSV application reads original bytes through a real Union Job, then uses the `csv-table` presentation plugin for tables and numeric-column statistics. It is a bounded file-analysis example, not a distributed aggregation benchmark. It supports UTF-8 CSV with optional BOM, quoted/multiline cells, at most 16 MiB, 100,000 rows and 256 unique columns. Values stay textual; statistics count finite numeric cells. Preview shows the first 10 rows; CSV downloads include all accepted rows and escape spreadsheet formulas. Statistics, analysis JSON, provenance and reports are also downloadable.
 
 ```bash
-python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conet.zip
+python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conetapp
 python3 scripts/smoke_uploaded_csv.py --url http://127.0.0.1:8870
+python3 scripts/smoke_input_retention.py --url http://127.0.0.1:8870
 ```
 
 ## Remote Items
 
 File inputs offer upload and remote DACP Item modes. Remote mode submits `{"uri":"dacp://host:port/dataset/item.csv"}`, binds the same Job variable and creates no local upload copy. The server validates paths, required views and known file sizes; folders are accepted only for an explicitly advertised bytes view requested by the input. URI user information, queries and fragments are rejected. Connections verify server identity using the configured CA and never forward Union credentials to user-supplied origins. The execution target must still be able to access and read the Item.
+
+## Reuse analysis inputs
+
+Analysis history in the App and workspace displays input availability, filenames and cleanup time. **Keep inputs long-term** pins the run's uploaded snapshots; they remain non-public and count against the input quota. **Resume automatic cleanup** starts a fresh configured retention period for a completed run. Active runs remain protected until they finish. Published results and uploaded input retention are independent.
+
+**Rerun** creates a new analysis with the saved Job, application definition, manifest, parameters and dataset bindings, including when the App has subsequently been edited. Uploaded files are taken from the original run snapshot, not the staging reference. Submission checks expiry, file presence, safe paths, size and SHA-256 before scheduling; a missing, expired or changed input requires uploading again. The new run receives a separate input URI and retention period. Queue limits, cancellation and storage quotas also apply to reruns. Remote Items are checked again but are not snapshotted; their contents may change, so this does not promise identical results.
+
+- `GET /apps/<app>/api/jobs/<run>/inputs`: input status and expiry.
+- `POST /apps/<app>/api/jobs/<run>/inputs/retention` with `{"keep":true}` pins snapshots; `false` resumes cleanup.
+- `POST /apps/<app>/api/jobs/<run>/rerun` with `{}` reuses historical inputs without accepting replacement parameters. The App must be online.
+
+### Shared-node execution access
+
+`bin/conet hosting-up` ensures the shared node is registered and configures the Union's `trusted_job_sources` for the `conet-app` service subject and this node's exact DACP origin. Updating an existing registration requires an idle Union and restarts only the Union when configuration changes. This permits the service to execute Jobs against its private uploaded inputs without listing or publishing those datasets. Other clients and source origins retain normal publication checks. The shared node authorizes the Union through its certificate-bound membership credential. Do not share the service token with visitors.

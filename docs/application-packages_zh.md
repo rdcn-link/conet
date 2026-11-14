@@ -1,6 +1,6 @@
 # 应用程序包
 
-CONET 应用程序包（`*.conet.zip`）是应用的可移交交付单元，包含输入表单、变量绑定、结果展示及固定的 XStream Job。在 App Builder 导入后核对依赖，点击“加载并发布”，应用就会注册并立即获得 `/apps/<id>/` 访问地址。用户通过该页面提交分析。仅导入只形成可编辑草稿，不执行 Job，也不发布应用。
+CONET 应用程序包（`*.conetapp`）是应用的可移交交付单元，包含输入表单、变量绑定、结果展示及固定的 XStream Job。在 App Builder 导入后核对依赖，点击“加载并发布”，应用就会注册并立即获得 `/apps/<id>/` 访问地址。用户通过该页面提交分析。仅导入只形成可编辑草稿，不执行 Job，也不发布应用。
 
 ```mermaid
 flowchart LR
@@ -12,10 +12,12 @@ flowchart LR
   W --> R[提交分析]
 ```
 
+`.conetapp` 是 CONET 应用专用后缀，文件内部采用标准 ZIP 格式，可用 ZIP 工具检查。HTTP 导出保留 `Content-Type: application/zip`。
+
 ## 包内容
 
 ```text
-application.conet.zip
+application.conetapp
 ├── manifest.json
 ├── application.yaml
 ├── job.yaml
@@ -46,7 +48,7 @@ application.conet.zip
 | `POST /api/appbuilder/apps` | 加载发布已核对的草稿，更新时提供修订 |
 
 ```bash
-python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conet.zip
+python3 scripts/build_application_package.py examples/uploaded-csv /tmp/uploaded-csv.conetapp
 ```
 
 通过 App Builder 导入该 ZIP。上传配置与可直接运行的 CSV 示例见[文件输入](file-inputs_zh.md)。辅助脚本打包 `application.yaml` 和 `job.yaml`；需要携带自定义上传封面时使用 App Builder 导出。

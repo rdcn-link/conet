@@ -12,7 +12,7 @@ async def main():
     if i['kind']=='data' and i['path'].lower().endswith('.csv') and 0<i.get('bytes',0)<100000:uri=i['dacp_uri'];break
    if uri:break
   assert uri,'No small CSV Item is available for this integration test'
-  await page.goto(base+'/apps/uploaded-csv/');await page.wait_for_selector('.file-upload select');await page.locator('.file-upload select').select_option('remote');await page.get_by_role('textbox',name='远程 DACP Item URI').fill(uri)
+  await page.goto(base+'/apps/uploaded-csv/');await page.wait_for_selector('.file-upload [role=radiogroup]');await page.get_by_role('radio',name='Item URI 输入',exact=True).check();await page.get_by_role('textbox',name='远程 DACP Item URI').fill(uri)
   assert await page.locator('input[type=file]').is_hidden()
   await page.locator('#submit').click();await page.wait_for_function("['已完成','执行失败'].includes(document.querySelector('#job-state').textContent)",timeout=180000)
   jobs=await(await page.request.get(base+'/apps/uploaded-csv/api/jobs')).json();run=await(await page.request.get(base+'/apps/uploaded-csv/api/jobs/'+jobs[0]['id'])).json();assert run['state']=='succeeded',run.get('error');assert run['variables']['INPUT_URI']==uri;assert run['result']['row_count']>0

@@ -20,8 +20,17 @@ object HostedNode {
   val process=new ProcessBuilder("setsid","sudo","-n",program.toString,"serve",s.network.resolve("union.yaml").toString).directory(s.root.toFile).redirectInput(ProcessBuilder.Redirect.from(Path.of("/dev/null").toFile)).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.appendTo(s.network.resolve("union.log").toFile)).start();processes.put("union",process.pid);Support.atomic(path,processes)
   val base=Support.localHttp(s.connection.path("web_urls").path("union").asText);val until=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(60);var ready=false;while(!ready&&Manager.alive(process.pid)&&System.nanoTime()<until){ready=scala.util.Try(Support.get(base+"/api/overview",2)).isSuccess;if(!ready)Thread.sleep(200)};require(ready,"Union 重启失败，请检查 union.log")
  }
+ private def configureUnion(s:Settings,nodeUrl:String,token:Path):Unit={
+  val path=s.network.resolve("union.yaml");val union=xstream.util.YamlDocument.parse(Files.readString(path)).deepCopy[com.fasterxml.jackson.databind.node.ObjectNode]();val members=union.path("members").asInstanceOf[com.fasterxml.jackson.databind.node.ArrayNode]
+  val memberChanged= !members.elements.asScala.exists(_.path("url").asText==nodeUrl)
+  if(memberChanged)members.add(Support.obj.put("url",nodeUrl).put("credential_file",token.toString))
+  val sourceTrust=if(union.path("trusted_job_sources").isObject)union.path("trusted_job_sources").asInstanceOf[com.fasterxml.jackson.databind.node.ObjectNode]else union.putObject("trusted_job_sources")
+  val previous=sourceTrust.path("conet-app").elements.asScala.map(_.asText).toSet;val trustChanged= !previous(nodeUrl)
+  if(trustChanged){val allowed=sourceTrust.putArray("conet-app");(previous+nodeUrl).toVector.sorted.foreach(allowed.add)}
+  if(memberChanged||trustChanged){checkIdle(s);Support.writeText(path,xstream.util.YamlDocument.dump(union));restartUnion(s)}
+ }
  def up(s:Settings):Unit={
-  require(!status(s).path("running").asBoolean,"共享托管节点已经运行");checkIdle(s)
+  if(status(s).path("running").asBoolean){configureUnion(s,status(s).path("url").asText,home(s).resolve("union.token"));println("Shared hosted node: "+status(s).path("url").asText);return};checkIdle(s)
   val storage=new HostedStorage(s);val h=home(s);Files.createDirectories(h);val plugins=h.resolve("plugins");Files.createDirectories(plugins)
   val jar=Support.children(s.root.resolve("conet-hosting/target/scala-2.13")).find(p=>p.getFileName.toString.matches("conet-hosting_2.13-[0-9].*\\.jar")&& !p.toString.endsWith("-sources.jar")).getOrElse(throw new IllegalArgumentException("请先运行 sbt hosting/packageBin"))
   Files.copy(jar,plugins.resolve("conet-hosting.jar"),java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -42,7 +51,7 @@ object HostedNode {
   val nodeUrl=s"dacp://${s.publicHost}:${config.path("port").asInt}";Support.atomic(record(s),Support.obj.put("pid",process.pid).put("url",nodeUrl).put("config",configFile.toString))
   val nodeWeb=s"http://127.0.0.1:${config.path("web").path("port").asInt}";val until=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(60);var ready=false
   while(!ready&&Manager.alive(process.pid)&&System.nanoTime()<until){ready=scala.util.Try(Support.get(nodeWeb+"/api/overview",2)).isSuccess;if(!ready)Thread.sleep(200)};require(ready,"托管节点未启动，请检查 .state/hosted-node/node.log")
-  val path=s.network.resolve("union.yaml");val union=xstream.util.YamlDocument.parse(Files.readString(path)).deepCopy[com.fasterxml.jackson.databind.node.ObjectNode]();val members=union.path("members").asInstanceOf[com.fasterxml.jackson.databind.node.ArrayNode];if(!members.elements.asScala.exists(_.path("url").asText==nodeUrl)){members.add(Support.obj.put("url",nodeUrl).put("credential_file",token.toString));checkIdle(s);Support.writeText(path,xstream.util.YamlDocument.dump(union));restartUnion(s)}
+  configureUnion(s,nodeUrl,token)
   println("Shared hosted node: "+nodeUrl)
  }
  def down(s:Settings):Unit={if(status(s).path("running").asBoolean){checkIdle(s);stop(s)}}

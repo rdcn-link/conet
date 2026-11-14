@@ -100,6 +100,26 @@ limits: {max_queued: 2, max_result_bytes: 1024}
   }finally s.close()
   val restored=new ApplicationService(definition,state,()=>manifest,new Backend,"/apps/example");try{assert(restored.get(id).get.path("state").asText=="succeeded");assert(Usage.aggregate(restored.records).path("submissions").asInt==1)}finally restored.close()
  }
+ test("rerun uses saved Job, variables and manifest after the application is edited") {
+  val state=Files.createTempDirectory("builder-rerun-");val original=new ApplicationService(definition,state,()=>manifest,new Backend,"/apps/example")
+  val first=try{val (_,n)=original.submit(manifest);val done=await(original,n.path("id").asText);assert(done.path("state").asText=="succeeded");done}finally original.close()
+  val changed=Definition.parse(config.replace("default: 0.5","default: 0.9"),job.replace("name: Example","name: Changed"))
+  val backend=new Backend{override def execute(j:String,v:JsonNode,l:Long,c:JobControl,start:String=>Unit,status:JsonNode=>Unit):Array[Byte]={assert(j==first.path("job_yaml").asText);assert(v==first.path("variables"));super.execute(j,v,l,c,start,status)}}
+  val service=new ApplicationService(changed,state,()=>json("{}"),backend,"/apps/example")
+  try{val (code,n)=service.rerun(first.path("id").asText);assert(code==202);val done=await(service,n.path("id").asText);assert(done.path("state").asText=="succeeded",done.toString);assert(done.path("rerun_of").asText==first.path("id").asText);assert(done.path("id")!=first.path("id"));assert(done.path("job_yaml")==first.path("job_yaml"))}finally service.close()
+ }
+ test("unavailable inputs reject rerun before creating a new analysis") {
+  var available=true
+  val files=new InputFiles {
+   def upload(d:Definition,k:String,n:String,in:java.io.InputStream):JsonNode=throw new UnsupportedOperationException()
+   def resolve(d:Definition,p:JsonNode,r:Option[String])=Values.copy(p)
+   override def status(d:Definition,r:JsonNode):JsonNode=Values.obj.put("available",available).put("reason","输入快照已过期，请重新上传文件")
+  }
+  val service=new ApplicationService(definition,Files.createTempDirectory("builder-rerun-expired-"),()=>manifest,new Backend,"/apps/example",files)
+  try {val (_,n)=service.submit(manifest);val done=await(service,n.path("id").asText);assert(done.path("state").asText=="succeeded");available=false
+   assert(intercept[IllegalArgumentException](service.rerun(done.path("id").asText)).getMessage.contains("过期"));assert(service.records.size==1)
+  }finally service.close()
+ }
  test("queued and running cancellation does not execute a queued job or retain partial results"){
   val entered=new CountDownLatch(1);val backend=new Backend{override def execute(j:String,v:JsonNode,l:Long,c:JobControl,start:String=>Unit,status:JsonNode=>Unit):Array[Byte]={start("running");entered.countDown();while(!c.cancelled.get())Thread.sleep(5);c.check();result}}
   val s=new ApplicationService(definition,Files.createTempDirectory("builder-cancel-"),()=>manifest,backend,"/apps/example")

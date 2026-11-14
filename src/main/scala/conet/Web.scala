@@ -55,7 +55,13 @@ final class Web(settings:Settings) extends AutoCloseable {
   if(uploadInput(x,service,path))return
   val publication="^/api/jobs/([a-zA-Z0-9-]{1,100})/publication$".r
   val plan="^/api/jobs/([a-zA-Z0-9-]{1,100})/plan$".r
+  val retained="^/api/jobs/([a-zA-Z0-9-]{1,100})/inputs/retention$".r
+  val inputs="^/api/jobs/([a-zA-Z0-9-]{1,100})/inputs$".r
+  val rerun="^/api/jobs/([a-zA-Z0-9-]{1,100})/rerun$".r
   path match {
+   case inputs(id) if x.getRequestMethod=="GET"=>json(x,200,service.inputStatus(id));return
+   case retained(id) if x.getRequestMethod=="POST"=>val body=requestBody(x);require(body.size==1&&body.path("keep").isBoolean,"请提供 keep 布尔值");json(x,200,service.retainInputs(id,body.path("keep").asBoolean));return
+   case rerun(id) if x.getRequestMethod=="POST"=>val body=requestBody(x);require(body.isObject&&body.isEmpty,"重新运行不接受替换历史参数");submitted(x,service.id,applications.whileOnline(service.id){service.rerun(id,submitter(x))});return
    case plan(id) if x.getRequestMethod=="GET"=>json(x,200,PlanNarrative(service.plan(id),settings,catalog));return
    case publication(id) if x.getRequestMethod=="GET"=>json(x,200,products.defaults(service,id));return
    case publication(id) if x.getRequestMethod=="POST"=>val body=Support.copy(requestBody(x,262144));body.put("publisher_name","CONET");storage.captureRun(service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集");val published=products.publish(service,id,body,node.path("url").asText);val productId=published.path("id").asText;try{storage.publishProduct(productId,products)}catch{case NonFatal(e)=>products.revoke(productId);throw e};json(x,201,published);return
@@ -101,7 +107,7 @@ final class Web(settings:Settings) extends AutoCloseable {
    path match{case "/api/catalog/refresh"=>json(x,200,catalog.list(true));case "/api/catalog/items"=>json(x,200,catalog.items(name,item));case "/api/catalog/preview"=>json(x,200,catalog.preview(name,item));case "/api/catalog/presign"=>json(x,200,catalog.presign(name,item));case _=>json(x,404,Support.obj.put("error","未找到资源"))};return
   }
   if(path=="/appbuilder"||path=="/appbuilder/"){if(x.getRequestMethod=="GET")builderAsset(x,"builder.html")else json(x,405,Support.obj.put("error","不支持该方法"));return}
-  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("application.html","analysis-process.js","workspace.js","workspace.css","builder.js","page-studio.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
+  if(path.startsWith("/appbuilder/assets/")){val name=path.stripPrefix("/appbuilder/assets/");if(x.getRequestMethod=="GET"&&Set("input-history.js","application.html","analysis-process.js","workspace.js","workspace.css","builder.js","page-studio.js","configuration-forms.js","presentation.js","product-publishing.js","product.js","product.html","product.css","visual-editor.js","visual-editor.css","runtime.js","application.js","application.css","appbuilder.css","map.html","map.js")(name))builderAsset(x,name)else json(x,404,Support.obj.put("error","未找到资源"));return}
   if(path.startsWith("/appbuilder/media/")&&x.getRequestMethod=="GET"){applications.media(path.stripPrefix("/appbuilder/media/")) match{case Some(p)=>file(x,p);case None=>json(x,404,Support.obj.put("error","未找到展示图片"))};return}
   if(path.startsWith("/api/storage/")){
    val action=path.stripPrefix("/api/storage/")
@@ -127,14 +133,14 @@ final class Web(settings:Settings) extends AutoCloseable {
 
 
    if(path=="/api/appbuilder/packages/import"&&x.getRequestMethod=="POST"){
-    checkOrigin(x);require(Option(x.getRequestHeaders.getFirst("Content-Type")).contains("application/octet-stream"),"请上传 ZIP 应用程序包")
+    checkOrigin(x);require(Option(x.getRequestHeaders.getFirst("Content-Type")).contains("application/octet-stream"),"请上传 .conetapp 应用程序包（ZIP 格式）")
     val bytes=try x.getRequestBody.readNBytes(4*1024*1024+1)finally x.getRequestBody.close();json(x,200,packages.load(bytes));return
    }
    if(path=="/api/appbuilder/packages/export"&&x.getRequestMethod=="POST"){
-    val bytes=packages.export(requestBody(x,262144));x.getResponseHeaders.set("Content-Disposition","attachment; filename=application.conet.zip");send(x,200,bytes,"application/zip");return
+    val bytes=packages.export(requestBody(x,262144));x.getResponseHeaders.set("Content-Disposition","attachment; filename=application.conetapp");send(x,200,bytes,"application/zip");return
    }
    if(path.startsWith("/api/appbuilder/packages/")&&x.getRequestMethod=="GET"){
-    val id=path.stripPrefix("/api/appbuilder/packages/");val document=applications.document(id).getOrElse(throw new IllegalArgumentException("应用不存在"));val bytes=packages.export(document);x.getResponseHeaders.set("Content-Disposition","attachment; filename="+id+".conet.zip");send(x,200,bytes,"application/zip");return
+    val id=path.stripPrefix("/api/appbuilder/packages/");val document=applications.document(id).getOrElse(throw new IllegalArgumentException("应用不存在"));val bytes=packages.export(document);x.getResponseHeaders.set("Content-Disposition","attachment; filename="+id+".conetapp");send(x,200,bytes,"application/zip");return
    }
    if(path=="/api/appbuilder/settings"&&x.getRequestMethod=="GET"){
     val url=settings.config.path("appbuilder").path("designer_url").asText("");if(url.nonEmpty){val uri=URI.create(url);require(Set("http","https")(uri.getScheme)&&uri.getHost!=null&&uri.getUserInfo==null,"Job Designer 地址无效")};json(x,200,Support.obj.put("designer_url",url).put("page_generation_enabled",pageGenerator.enabled))
