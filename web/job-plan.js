@@ -22,7 +22,7 @@ async function loadPlan(){
 async function loadAnalysis(){
  const response=await fetch('/apps/'+encodeURIComponent(analysisApp)+'/api/jobs/'+encodeURIComponent(analysisRun)+'/plan');const snapshot=await response.json();if(!response.ok)throw Error(snapshot.error||'无法读取分析 Job 快照');
  const ref=value=>{const [task,port='result']=String(value).split(':');return {task,port}};
- const job={logical:true,state:'succeeded',job_id:analysisRun,nodes:{},output_route:'分析结果',outputs:Object.fromEntries(Object.entries(snapshot.job.outputs||{}).map(([k,v])=>[k,ref(v)])),steps:(snapshot.job.steps||[]).map(s=>({...s,node:'本次分析',inputs:Object.entries(s.inputs||{}).map(([port,v])=>{const r=ref(v);return {port,task:r.task,output_port:r.port}})}))};
+ const job={logical:true,state:'succeeded',job_id:analysisRun,nodes:{},output_route:'分析结果',outputs:Object.fromEntries(Object.entries(snapshot.job.outputs||{}).map(([k,v])=>[k,ref(v)])),steps:(snapshot.job.steps||[]).map(s=>({...s,operator:typeof s.operator==='string'?s.operator:s.operator.local,node:'本次分析',inputs:Object.entries(s.inputs||{}).map(([port,v])=>{const r=ref(v);return {port,task:r.task,output_port:r.port}})}))};
  if(!viewer){viewer=new DacpDag.Viewer(byId('dag'));viewer.setLayout('layout','dependency');viewer.setLayout('direction','horizontal')}
  await viewer.update(job,new Map(),fmt);byId('plan-summary').textContent='本次分析 Job · 已填充变量 · '+job.steps.length+' 个步骤';
 

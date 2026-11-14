@@ -41,8 +41,10 @@ final case class Definition(config:JsonNode,jobYaml:String) {
  }
 }
 object Definition {
+ def operatorId(s:JsonNode):String=if(s.path("operator").isTextual)s.path("operator").asText else s.path("operator").path("local").asText
+
  private val widgets=Set("number","select","text","datetime","polygon","cone","object","file")
- def parse(configYaml:String,jobYaml:String):Definition={
+ def parse(configYaml:String,jobYaml:String,allowLocalOperators:Boolean=false):Definition={
   val n=YamlDocument.parse(configYaml);require(n.isObject,"应用配置必须是映射")
   val allowed=Set("version","id","title","description","job","inputs","variables","result","presentation","limits","synthetic","data","publication")
   require(n.fieldNames.asScala.toSet.subsetOf(allowed),"存在未知应用配置项")
@@ -72,9 +74,14 @@ object Definition {
   require(!definition.artifacts.exists(a=>Set("analysis","variables","metadata","report")(a.path("id").asText)),"成果编号与系统成果冲突")
   definition.artifacts.foreach{a=>require(a.path("id").asText.matches("[a-z][a-z0-9_]*"),"无效成果编号");Values.relative(Path.of("/application"),a.path("file").asText);require(!a.path("file").asText.contains("/"),"成果文件必须位于结果根目录");require(Set("raw","json","csv")(a.path("format").asText),"不支持的成果格式")}
   ResultDecoders.named(n.path("result").path("decoder").asText)
-  val job=YamlDocument.parse(jobYaml)
+  val rawJob=YamlDocument.parse(jobYaml)
+  val sinks=rawJob.path("steps").elements.asScala.filter(s=>operatorId(s)=="client_sink@1.0").toVector
+  val job=if(allowLocalOperators&&sinks.nonEmpty){
+   require(sinks.size==1&& !rawJob.has("outputs"),"本地应用须使用唯一 client_sink，不能同时定义 outputs")
+   val normalized=Values.copy(rawJob);normalized.set[JsonNode]("outputs",sinks.head.path("inputs"));normalized.set[JsonNode]("steps",Values.array(rawJob.path("steps").elements.asScala.filterNot(s=>operatorId(s)=="client_sink@1.0").toVector));normalized
+  }else rawJob
   require(job.path("steps").isArray && job.path("steps").size>0 && job.path("outputs").isObject && job.path("outputs").size==1,"应用 Job 必须包含步骤和一个输出")
-  require(job.path("steps").elements.asScala.forall(s=>s.path("operator").isTextual && s.path("operator").asText.contains("@")),"应用 Job 使用具名仓库算子")
+  require(job.path("steps").elements.asScala.forall(s=>(s.path("operator").isTextual && s.path("operator").asText.contains("@")) || (allowLocalOperators && s.path("operator").isObject && s.path("operator").fieldNames.asScala.toSet==Set("local") && s.path("operator").path("local").asText.matches("[a-z][a-z0-9_]*@[0-9][A-Za-z0-9_.-]*"))),"应用 Job 使用具名仓库算子")
   val steps=job.path("steps").elements.asScala.toVector;val identifiers=steps.map(_.path("id").asText)
   require(identifiers.forall(_.matches("[A-Za-z_][A-Za-z0-9_-]*"))&&identifiers.distinct.size==identifiers.size,"步骤标识无效或重复")
   def producer(value:JsonNode):String={val id=if(value.isTextual)value.asText.takeWhile(_!=':')else value.path("task").asText;require(identifiers.contains(id),"连接引用了不存在的步骤："+id);id}

@@ -141,6 +141,15 @@ appbuilder:
   page_generation:
     codex_config: /home/cnic/.codex/config.toml
 
+  product_robot:
+    enabled: true
+    interval_seconds: 1800
+    max_run_seconds: 3600
+    repositories: [http://127.0.0.1:8820]
+    local_runtime:
+      runtime: python-arrow@1.0
+      image: sha256:40db7fee594f1452790d1cc99c2e5429e187eb64633c716b8c6f903c47576975
+
   products:
     directory: .state/hosting/products
     retention_days: 30

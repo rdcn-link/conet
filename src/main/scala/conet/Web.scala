@@ -20,6 +20,24 @@ final class Web(settings:Settings) extends AutoCloseable {
  private val pageGenerator=new ApplicationPageGenerator(settings,applications)
  private val storage=new HostedStorage(settings)
  private val products=new Products(settings)
+ private val planner=new ProductPlanner(settings,catalog)
+ private val robotWorkflows=new RobotWorkflows(settings,catalog)
+ private def application(id:String)=robotWorkflows.get(id).orElse(applications.get(id)).getOrElse(throw new IllegalArgumentException("应用不存在"))
+ private val robot=new ProductRobot(settings.state.resolve("product-robot"),settings.config.path("appbuilder").path("product_robot"),new ProductRobotRuntime {
+  def context():JsonNode=planner.context()
+  def propose(context:JsonNode):JsonNode=planner.propose(context)
+  def prepare(proposal:JsonNode,context:JsonNode,candidate:String):JsonNode=robotWorkflows.prepare(proposal,context,candidate)
+  def submit(app:String,inputs:JsonNode):(Int,JsonNode)=application(app).submit(inputs,Some(Support.obj.put("name","产品加工机器人")))
+  def run(app:String,id:String):JsonNode=application(app).get(id).getOrElse(throw new IllegalArgumentException("分析记录不存在"))
+  def review(app:String,id:String):JsonNode=products.defaults(application(app),id)
+  def published(candidate:String):Option[JsonNode]=products.list.elements.asScala.find(_.path("automation").path("candidate_id").asText==candidate).map{m=>storage.publishProduct(m.path("product_id").asText,products);Support.obj.put("id",m.path("product_id").asText).put("dataset_uri",m.path("dataset_uri").asText).put("preview_url","/products/"+m.path("product_id").asText+"/")}
+  def publish(app:String,id:String,request:JsonNode,automation:JsonNode):JsonNode={
+   val body=Support.copy(request).put("publisher_name","CONET");val service=application(app)
+   storage.captureRun(service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集")
+   val publication=products.publish(service,id,body,node.path("url").asText,Some(automation))
+   try storage.publishProduct(publication.path("id").asText,products)catch{case NonFatal(e)=>products.revoke(publication.path("id").asText);throw e};publication
+  }
+ })
  private val ratings=new Ratings(settings.root.resolve(".state"))
  private def submitter(x:HttpExchange):Option[JsonNode]=None
  private def submitted(x:HttpExchange,app:String,result:(Int,JsonNode)):Unit={val(code,value)=result;json(x,code,value)}
@@ -61,29 +79,29 @@ final class Web(settings:Settings) extends AutoCloseable {
   path match {
    case inputs(id) if x.getRequestMethod=="GET"=>json(x,200,service.inputStatus(id));return
    case retained(id) if x.getRequestMethod=="POST"=>val body=requestBody(x);require(body.size==1&&body.path("keep").isBoolean,"请提供 keep 布尔值");json(x,200,service.retainInputs(id,body.path("keep").asBoolean));return
-   case rerun(id) if x.getRequestMethod=="POST"=>val body=requestBody(x);require(body.isObject&&body.isEmpty,"重新运行不接受替换历史参数");submitted(x,service.id,applications.whileOnline(service.id){service.rerun(id,submitter(x))});return
+   case rerun(id) if x.getRequestMethod=="POST"=>require(!service.allowLocalOperators,"机器人流程请通过产品加工记录重放，以保留审批与来源关系");val body=requestBody(x);require(body.isObject&&body.isEmpty,"重新运行不接受替换历史参数");submitted(x,service.id,applications.whileOnline(service.id){service.rerun(id,submitter(x))});return
    case plan(id) if x.getRequestMethod=="GET"=>json(x,200,PlanNarrative(service.plan(id),settings,catalog));return
    case publication(id) if x.getRequestMethod=="GET"=>json(x,200,products.defaults(service,id));return
-   case publication(id) if x.getRequestMethod=="POST"=>val body=Support.copy(requestBody(x,262144));body.put("publisher_name","CONET");storage.captureRun(service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集");val published=products.publish(service,id,body,node.path("url").asText);val productId=published.path("id").asText;try{storage.publishProduct(productId,products)}catch{case NonFatal(e)=>products.revoke(productId);throw e};json(x,201,published);return
+   case publication(id) if x.getRequestMethod=="POST"=>require(!service.allowLocalOperators&& !robot.owns(service.id,id),"机器人加工成果须在产品加工审批中发布");val body=Support.copy(requestBody(x,262144));body.put("publisher_name","CONET");storage.captureRun(service,id);val node=HostedNode.status(settings);require(node.path("running").asBoolean,"共享 DACP 节点未运行，无法发布数据集");val published=products.publish(service,id,body,node.path("url").asText);val productId=published.path("id").asText;try{storage.publishProduct(productId,products)}catch{case NonFatal(e)=>products.revoke(productId);throw e};json(x,201,published);return
    case _=>()
   }
   val method=x.getRequestMethod
   if(method=="GET")path match {
    case "/"=>builderAsset(x,"application.html")
-   case "/api/config"=>json(x,200,service.config)
+   case "/api/config"=>val config=Support.copy(service.config);config.put("robot_workflow",service.allowLocalOperators);json(x,200,config)
    case "/api/jobs"=>json(x,200,service.list)
    case p if p.startsWith("/api/jobs/")=>service.get(p.stripPrefix("/api/jobs/")) match{case Some(j)=>json(x,200,j);case None=>json(x,404,Support.obj.put("error","未找到任务"))}
    case p if p.startsWith("/results/")=>val parts=p.split("/");val artifact=if(parts.length==4)service.artifact(parts(2),parts(3))else None;artifact match{case Some(f)=>x.getResponseHeaders.set("Content-Disposition","attachment; filename=\""+parts(3)+"\"");file(x,f);case None=>json(x,404,Support.obj.put("error","未找到成果"))}
    case _=>json(x,404,Support.obj.put("error","未找到资源"))
   }else if(method=="POST"){
    checkOrigin(x)
-   if(path=="/api/jobs"){submitted(x,service.id,applications.whileOnline(service.id){service.submit(requestBody(x),submitter(x))})}
+   if(path=="/api/jobs"){require(!service.allowLocalOperators,"机器人流程请通过产品加工记录重放");submitted(x,service.id,applications.whileOnline(service.id){service.submit(requestBody(x),submitter(x))})}
    else if(path=="/api/preview")json(x,200,service.preview(requestBody(x)))
    else if(path.startsWith("/api/jobs/")&&path.endsWith("/cancel")){service.cancel(path.stripPrefix("/api/jobs/").stripSuffix("/cancel")) match{case Some(j)=>json(x,200,j);case None=>json(x,404,Support.obj.put("error","未找到任务"))}}
    else json(x,404,Support.obj.put("error","未找到资源"))
   }else json(x,405,Support.obj.put("error","不支持该方法"))
  }
- private val portalFiles=Map("/ratings.js"->"ratings.js","/ratings.css"->"ratings.css","/nodes"->"nodes.html","/nodes/"->"nodes.html","/services"->"services.html","/services/"->"services.html","/assets/background-coast.svg"->"assets/background-coast.svg","/assets/background-forest.svg"->"assets/background-forest.svg","/assets/background-indigo.svg"->"assets/background-indigo.svg","/assets/background-amber.svg"->"assets/background-amber.svg","/assets/background-rose.svg"->"assets/background-rose.svg","/catalog"->"catalog.html","/catalog/"->"catalog.html","/catalog.js"->"catalog.js","/catalog.css"->"catalog.css","/navigation.css"->"navigation.css","/"->"index.html","/screen"->"screen.html","/screen/"->"screen.html","/style.css"->"style.css","/app.js"->"app.js","/screen-panels.js"->"screen-panels.js","/screen.js"->"screen.js","/screen.css"->"screen.css","/job-plan"->"job-plan.html","/job-plan.js"->"job-plan.js","/job-plan.css"->"job-plan.css","/assets/tianditu.js"->"assets/tianditu.js","/assets/earth.jpg"->"assets/earth.jpg","/assets/conet-mark.svg"->"assets/conet-mark.svg","/assets/app-cover.svg"->"assets/app-cover.svg","/assets/check-dams-cover.svg"->"assets/check-dams-cover.svg","/assets/observatory-cover.svg"->"assets/observatory-cover.svg","/assets/emergency-cover.svg"->"assets/emergency-cover.svg")
+ private val portalFiles=Map("/products"->"products.html","/products/"->"products.html","/products.js"->"products.js","/products.css"->"products.css","/product-robot"->"product-robot.html","/product-robot/"->"product-robot.html","/product-robot.js"->"product-robot.js","/ratings.js"->"ratings.js","/ratings.css"->"ratings.css","/nodes"->"nodes.html","/nodes/"->"nodes.html","/services"->"services.html","/services/"->"services.html","/assets/background-coast.svg"->"assets/background-coast.svg","/assets/background-forest.svg"->"assets/background-forest.svg","/assets/background-indigo.svg"->"assets/background-indigo.svg","/assets/background-amber.svg"->"assets/background-amber.svg","/assets/background-rose.svg"->"assets/background-rose.svg","/catalog"->"catalog.html","/catalog/"->"catalog.html","/catalog.js"->"catalog.js","/catalog.css"->"catalog.css","/navigation.css"->"navigation.css","/"->"index.html","/screen"->"screen.html","/screen/"->"screen.html","/style.css"->"style.css","/app.js"->"app.js","/screen-panels.js"->"screen-panels.js","/screen.js"->"screen.js","/screen.css"->"screen.css","/job-plan"->"job-plan.html","/job-plan.js"->"job-plan.js","/job-plan.css"->"job-plan.css","/assets/tianditu.js"->"assets/tianditu.js","/assets/earth.jpg"->"assets/earth.jpg","/assets/conet-mark.svg"->"assets/conet-mark.svg","/assets/app-cover.svg"->"assets/app-cover.svg","/assets/check-dams-cover.svg"->"assets/check-dams-cover.svg","/assets/observatory-cover.svg"->"assets/observatory-cover.svg","/assets/emergency-cover.svg"->"assets/emergency-cover.svg")
  private def ratingBrowser(x:HttpExchange):String={
   val existing=Option(x.getRequestHeaders.getFirst("Cookie")).toVector.flatMap(_.split(";")).map(_.trim).find(_.startsWith("conet-rating=")).map(_.stripPrefix("conet-rating="))
   existing.filter(_.matches("[A-Za-z0-9-]{36}")).getOrElse{
@@ -144,7 +162,7 @@ final class Web(settings:Settings) extends AutoCloseable {
    }
    if(path=="/api/appbuilder/settings"&&x.getRequestMethod=="GET"){
     val url=settings.config.path("appbuilder").path("designer_url").asText("");if(url.nonEmpty){val uri=URI.create(url);require(Set("http","https")(uri.getScheme)&&uri.getHost!=null&&uri.getUserInfo==null,"Job Designer 地址无效")};json(x,200,Support.obj.put("designer_url",url).put("page_generation_enabled",pageGenerator.enabled))
-   }else if(path=="/api/appbuilder/statistics"&&x.getRequestMethod=="GET"){val stats=applications.statistics;stats.path("nodes").elements.asScala.foreach{row=>cached.path("overview").path("members").elements.asScala.find(_.path("identity").asText==row.path("id").asText).foreach{member=>settings.centers.find(_.path("id").asText==member.path("center_id").asText).foreach(center=>row.asInstanceOf[ObjectNode].put("name",center.path("title").asText))}};json(x,200,stats)}
+   }else if(path=="/api/appbuilder/statistics"&&x.getRequestMethod=="GET"){val stats=applications.statisticsWith(robotWorkflows.history);stats.path("nodes").elements.asScala.foreach{row=>cached.path("overview").path("members").elements.asScala.find(_.path("identity").asText==row.path("id").asText).foreach{member=>settings.centers.find(_.path("id").asText==member.path("center_id").asText).foreach(center=>row.asInstanceOf[ObjectNode].put("name",center.path("title").asText))}};json(x,200,stats)}
    else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="GET")json(x,200,applications.list)
    else if(path=="/api/appbuilder/apps"&&x.getRequestMethod=="POST"){val body=requestBody(x,262144);val id=xstream.util.YamlDocument.parse(body.path("application_yaml").asText).path("id").asText;json(x,201,{val saved=applications.save(body);saved})}
    else if(path=="/api/appbuilder/media"&&x.getRequestMethod=="POST")json(x,201,applications.upload(requestBody(x,3000000)))
@@ -159,6 +177,24 @@ final class Web(settings:Settings) extends AutoCloseable {
    else json(x,404,Support.obj.put("error","未找到资源"));return
   }
   if(path=="/api/analyses"&&x.getRequestMethod=="GET"){json(x,200,applications.history(products.list));return}
+  if(path=="/api/product-robot"&&x.getRequestMethod=="GET"){json(x,200,robot.status);return}
+  if(path=="/api/product-robot/run"&&x.getRequestMethod=="POST"){val body=requestBody(x);require(body.isObject&&body.isEmpty,"立即加工不接受额外参数");json(x,202,robot.trigger());return}
+  if(path=="/api/product-robot/settings"&&x.getRequestMethod=="POST"){val body=requestBody(x);require(body.size==1&&body.path("enabled").isBoolean,"请提供 enabled 布尔值");json(x,200,robot.enable(body.path("enabled").asBoolean));return}
+  val bundlePath="^/api/product-robot/([a-f0-9]{32})/(bundle|replay|cancel)$".r
+  path match {
+   case bundlePath(id,"bundle") if x.getRequestMethod=="GET"=>val record=robot.get(id);json(x,200,robotWorkflows.bundle(record.path("app_id").asText));return
+   case bundlePath(id,"replay") if x.getRequestMethod=="POST"=>val body=requestBody(x);require(body.isObject&&body.isEmpty,"重放不接受替换参数");json(x,202,robot.replay(id));return
+   case bundlePath(id,"cancel") if x.getRequestMethod=="POST"=>val body=requestBody(x);require(body.isObject&&body.isEmpty,"取消不接受额外参数");val record=robot.get(id);val run=application(record.path("app_id").asText).cancel(record.path("run_id").asText);json(x,200,run.getOrElse(throw new IllegalArgumentException("分析记录不存在")));return
+   case _=>()
+  }
+  val candidate="^/api/product-robot/([a-f0-9]{32})(?:/(approve|reject))?$".r
+  path match {
+   case candidate(id,null) if x.getRequestMethod=="GET"=>json(x,200,robot.get(id));return
+   case candidate(id,"approve") if x.getRequestMethod=="POST"=>json(x,201,robot.approve(id,requestBody(x,262144)));return
+   case candidate(id,"reject") if x.getRequestMethod=="POST"=>val body=requestBody(x);json(x,200,robot.reject(id,body.path("review_note").asText));return
+   case _=>()
+  }
+  if(Set("/products","/products/","/product-robot","/product-robot/")(path)&&x.getRequestMethod=="GET"){file(x,settings.root.resolve("web").resolve(portalFiles(path)));return}
   if(path=="/api/products"&&x.getRequestMethod=="GET"){json(x,200,products.list);return}
   if(path.startsWith("/products/")){
    x.getResponseHeaders.set("X-Robots-Tag","noindex")
@@ -175,7 +211,7 @@ final class Web(settings:Settings) extends AutoCloseable {
     case _=>json(x,404,Support.obj.put("error","未找到资源"))
    };return
   }
-  if(path.startsWith("/apps/")){val parts=path.stripPrefix("/apps/").split("/",2);applications.get(parts(0)) match{case Some(service)=>if(parts.length==1){x.getResponseHeaders.set("Location",path+"/");x.sendResponseHeaders(302,-1);x.close()}else handleApplication(x,service,"/"+parts(1));case None=>json(x,404,Support.obj.put("error","未找到应用"))};return}
+  if(path.startsWith("/apps/")){val parts=path.stripPrefix("/apps/").split("/",2);robotWorkflows.get(parts(0)).orElse(applications.get(parts(0))) match{case Some(service)=>if(parts.length==1){x.getResponseHeaders.set("Location",path+"/");x.sendResponseHeaders(302,-1);x.close()}else handleApplication(x,service,"/"+parts(1));case None=>json(x,404,Support.obj.put("error","未找到应用"))};return}
 
   if(x.getRequestMethod!="GET"){json(x,404,Support.obj.put("error","未找到资源"));return}
   path match {
@@ -226,7 +262,8 @@ final class Web(settings:Settings) extends AutoCloseable {
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=try{products.cleanupExpired()}catch{case NonFatal(e)=>System.err.println("Product retention cleanup failed: "+e.getClass.getSimpleName)}},0,1,TimeUnit.HOURS)
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=applications.captureResults(storage)},5,15,TimeUnit.SECONDS)
   scheduler.scheduleWithFixedDelay(new Runnable{def run():Unit=try uploads.cleanup(applications.activeRunKeys)catch{case NonFatal(e)=>System.err.println("Input cleanup failed: "+e.getClass.getSimpleName)}},30,60,TimeUnit.SECONDS)
+  robot.start()
   println(s"CONET: http://${settings.publicHost}:${settings.config.path("port").asInt}/")
  }
- def close():Unit={servers.foreach(_.stop(0));scheduler.shutdownNow();observations.shutdownNow();applications.close();cases.values.foreach(_.close());settings.analysisScheduler.close();workers.shutdownNow()}
+ def close():Unit={robot.close();robotWorkflows.close();servers.foreach(_.stop(0));scheduler.shutdownNow();observations.shutdownNow();applications.close();cases.values.foreach(_.close());settings.analysisScheduler.close();workers.shutdownNow()}
 }

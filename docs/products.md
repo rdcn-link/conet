@@ -28,7 +28,7 @@ Published products are DACP datasets on the shared node. The publication respons
 
 ## Publish from a result
 
-1. Sign in and complete an analysis on `/apps/<id>/` or load a completed run from its history.
+1. Complete an analysis on `/apps/<id>/` or load a completed run from its history.
 2. Click **发布并分享本次结果**. Review the automatically generated source and artifact lists.
 3. The publisher is recorded as CONET; author and source attribution are provided separately. Fill in the application author/license and each source's data rights holder, hosting provider, license and attribution requirements. Rights declarations are self-declared and are not proof of real-world ownership.
 4. Confirm permission to display derived results. Select download artifacts only when all relevant parties permit their download. Commercial use has a separate permission.
@@ -118,3 +118,5 @@ Configure every relevant source, not only the first one in this illustration. Pe
 | `POST /products/<id>/revoke` | Revoke using `{}` |
 
 Expired or revoked products return HTTP 410. Invalid or unconfirmed declarations are rejected without publishing. Cross-origin mutations are rejected. Publication and withdrawal require no login. Public page/API/file access remains anonymous. Rights declarations are not automatically verified. See [workspaces](workspaces.md) for storage organization and the shared hosted Catalog.
+
+[Autonomous product processing and gallery](product-robot.md)

@@ -41,7 +41,8 @@ final class Applications(settings:Settings,cases:Map[String,CaseService],inputFi
   }}.sortBy(_.path("created_at").asText).reverse)
  }
  def captureResults(storage:HostedStorage):Unit=synchronized{services.values.foreach{s=>s.records.filter(_.path("state").asText=="succeeded").foreach{r=>try storage.captureRun(s,r.path("id").asText)catch{case scala.util.control.NonFatal(e)=>System.err.println("Result archive failed: "+e.getMessage)}}}}
- def statistics:JsonNode=synchronized{conet.appbuilder.Usage.aggregate(services.values.toVector.flatMap(_.records))}
+ def statistics:JsonNode=statisticsWith(Vector.empty)
+ def statisticsWith(additional:Seq[ApplicationService]):JsonNode=synchronized{conet.appbuilder.Usage.aggregate((services.values.toVector++additional).flatMap(_.records))}
  def statisticsFor(ids:Set[String]):JsonNode=synchronized{conet.appbuilder.Usage.aggregate(services.values.filter(s=>ids(s.id)).toVector.flatMap(_.records))}
  def list:JsonNode=synchronized{Values.array(services.values.toVector.filter(s=>publicationStatus(s.id)!="deleted").sortBy(_.id).map{s=>
   val p=s.definition.config.path("presentation");val n=Values.obj.put("id",s.id).put("title",s.definition.config.path("title").asText).put("description",s.definition.config.path("description").asText).put("url",s"/apps/${s.id}/").put("cover_url",p.path("cover").asText("/assets/app-cover.svg")).put("submissions",s.records.size).put("revision",revision(s.definition)).put("status",publicationStatus(s.id))

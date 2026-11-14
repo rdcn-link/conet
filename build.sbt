@@ -21,3 +21,11 @@ lazy val tabular = project.in(file("conet-tabular")).dependsOn(appbuilder)
 dependsOn(appbuilder,hosting,tabular)
 
 libraryDependencies += "io.github.rdcn-link" %% "xstream-dacp-protocol" % "0.1.0-SNAPSHOT"
+
+// Local product processing uses the standalone engine and its existing plugin contracts.
+libraryDependencies ++= Seq(
+ "io.github.rdcn-link" %% "xstream-engine" % "0.1.0-SNAPSHOT",
+ "io.github.rdcn-link" %% "xstream-dacp-client" % "0.1.0-SNAPSHOT",
+ "io.github.rdcn-link" %% "xstream-plugin-operator-executors" % "0.1.0-SNAPSHOT" % Runtime,
+ "io.github.rdcn-link" %% "xstream-plugin-execution-file" % "0.1.0-SNAPSHOT" % Runtime,
+ "io.github.rdcn-link" %% "xstream-data-catalog-static" % "0.1.0-SNAPSHOT" % Runtime)

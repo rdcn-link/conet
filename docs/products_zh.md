@@ -118,3 +118,5 @@ publication:
 | `POST /products/<id>/revoke` | 使用 `{}` 撤回 |
 
 到期或撤回返回 HTTP 410。无效或未确认的声明被拒绝，不生成产品。跨站修改请求被拒绝。发布和撤回均无需登录。公开页面、API 和获准文件仍可匿名访问。系统不会自动核验权益声明。工作空间、存储及共享托管 Catalog 见[工作空间](workspaces_zh.md)。
+
+[自主产品加工与产品列表](product-robot_zh.md)

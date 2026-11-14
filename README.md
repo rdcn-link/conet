@@ -94,3 +94,5 @@ Open `/appbuilder/` to configure, preview and publish analysis applications afte
 Design the workflow first, then its form, variable bindings and result views. Deliver the application as an importable/exportable [application package](docs/application-packages.md). [File inputs](docs/file-inputs.md) bind bounded browser uploads to run-scoped DACP Items. See `examples/uploaded-csv/` for CSV preview, column statistics and downloads. CONET connects eight Node members: seven scientific data centers and one shared hosting center, coordinated by a separate Union.
 
 [Data catalog](docs/catalog.md) · browse at `/catalog/`.
+
+[Autonomous product processing](docs/product-robot.md)

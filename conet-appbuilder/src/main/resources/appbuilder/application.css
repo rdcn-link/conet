@@ -27,3 +27,5 @@ body[data-page-layout="split"] .analysis-workspace{display:grid;grid-template-co
 .published-app .field-help{display:block;color:#748d9c;line-height:1.7;margin:0 0 8px;font-size:11px}
 
 .input-retention{display:grid;gap:5px;padding:10px 12px;margin-top:8px;border:1px solid #dce6ec;border-radius:9px;background:#f5f9fb;font-size:13px;overflow-wrap:anywhere}.input-retention small{color:#587080}.input-history-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:5px}.input-history-actions button{padding:5px 10px;border:1px solid #cbdde5;border-radius:6px;background:#fff;color:#23627a;cursor:pointer}.input-history-actions button:disabled{opacity:.45;cursor:default}.history-record{margin:9px 0}.input-retention [role=alert]{color:#a23434}
+
+body[data-robot=true] .analysis-workspace{grid-template-columns:minmax(0,1fr)}

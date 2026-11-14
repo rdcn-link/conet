@@ -24,6 +24,7 @@ trait JobBackend {
  def datasets(scope:String):Map[String,String]
  def webUrls:JsonNode
  def details(jobId:String):Option[JsonNode]=None
+ def sourceBindings(job:JsonNode):Vector[JsonNode]=Vector.empty
  def execute(job:String,variables:JsonNode,limit:Long,control:JobControl,started:String=>Unit,status:JsonNode=>Unit):Array[Byte]
 }
 final class UnionBackend(connection:()=>JsonNode) extends JobBackend {
@@ -53,7 +54,7 @@ final class UnionBackend(connection:()=>JsonNode) extends JobBackend {
   };bytes.toByteArray
  }
 }
-final class ApplicationService(val definition:Definition,val state:Path,manifest:()=>JsonNode,backend:JobBackend,val base:String,inputFiles:InputFiles=InputFiles.unavailable,sharedScheduler:Option[AnalysisScheduler]=None) extends AutoCloseable {
+final class ApplicationService(val definition:Definition,val state:Path,manifest:()=>JsonNode,backend:JobBackend,val base:String,inputFiles:InputFiles=InputFiles.unavailable,sharedScheduler:Option[AnalysisScheduler]=None,val allowLocalOperators:Boolean=false) extends AutoCloseable {
  val id=definition.id
  private val jobs=scala.collection.mutable.Map.empty[String,ObjectNode]
  private val admission=sharedScheduler.getOrElse(new AnalysisScheduler())
@@ -66,7 +67,7 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
  def config:JsonNode={val n=Values.obj.put("job_yaml",definition.jobYaml);n.set[JsonNode]("application",definition.publicConfig);n.set[JsonNode]("manifest",manifest());n.set[JsonNode]("web_urls",backend.webUrls);n}
  def records:Vector[JsonNode]=synchronized{jobs.values.toVector.map(Values.copy)}
  def list:JsonNode=synchronized{Values.array(jobs.values.toVector.sortBy(_.path("created_at").asText).reverse.map{j=>val n=Values.copy(j);n.remove("result");n.remove("execution");n.remove("definition");n.remove("job_yaml");n.remove("resolved_job_yaml");n.remove("manifest_snapshot");n.remove("replay_variables");withInputs(n)})}
- private def runDefinition(record:JsonNode):Definition={require(record.path("definition").isObject&&record.path("job_yaml").isTextual,"历史记录缺少应用或 Job 快照，无法重新运行");Definition.parse(YamlDocument.dump(record.path("definition")),record.path("job_yaml").asText)}
+ private def runDefinition(record:JsonNode):Definition={require(record.path("definition").isObject&&record.path("job_yaml").isTextual,"历史记录缺少应用或 Job 快照，无法重新运行");Definition.parse(YamlDocument.dump(record.path("definition")),record.path("job_yaml").asText,allowLocalOperators)}
  private def withInputs(record:ObjectNode):ObjectNode={
   try{record.set[JsonNode]("input_retention",inputFiles.status(runDefinition(jobs(record.path("id").asText)),record))}catch{case _:IllegalArgumentException=>record.set[JsonNode]("input_retention",Values.obj.put("available",false).put("reason","历史记录缺少可复用的输入快照"))}
   record
@@ -103,7 +104,7 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
   val input=previous.map(record=>inputFiles.replay(definition,record,validated,identifier)).getOrElse(inputFiles.resolve(definition,validated,Some(identifier)))
   input.set[JsonNode]("manifest_snapshot",manifestSnapshot);previous.foreach{record=>input.put("rerun_of",record.path("id").asText);if(record.path("variables").isObject)input.set[JsonNode]("replay_variables",record.path("variables"));if(record.path("dataset_bindings").isArray)input.set[JsonNode]("dataset_bindings",record.path("dataset_bindings"))}
   input.put("id",identifier).put("state","queued").put("created_at",now).put("synthetic",definition.config.path("synthetic").asBoolean(true));input.set[JsonNode]("definition",definition.publicConfig);input.put("job_yaml",definition.jobYaml);input.put("app_id",id);submittedBy.foreach(a=>input.set[JsonNode]("submitted_by",a))
-  val stepOperators=Values.obj;YamlDocument.parse(definition.jobYaml).path("steps").elements.asScala.foreach(s=>stepOperators.put(s.path("id").asText,s.path("operator").asText));input.set[JsonNode]("step_operators",stepOperators)
+  val stepOperators=Values.obj;YamlDocument.parse(definition.jobYaml).path("steps").elements.asScala.foreach(s=>stepOperators.put(s.path("id").asText,Definition.operatorId(s)));input.set[JsonNode]("step_operators",stepOperators)
   save(input);jobs(identifier)=input;val control=new JobControl();controls.put(identifier,control)
   ()=>execute(identifier,control)
   }
@@ -122,7 +123,7 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
     val values=Values.copy(job.path("replay_variables"));definition.variableBindings.foreach{case(key,b)=>if(b.has("input")){val v=job.at("/"+b.path("input").asText.replace('.', '/'));values.set[JsonNode](key,if(v.isObject&&definition.fileFields.exists(_._1==b.path("input").asText))v.path("uri")else v)}};values
    }else definition.variables(job,m,datasets)
    val resolved=YamlDocument.parse(WorkflowVariables.resolve(definition.jobYaml,vars))
-   val bindings=Values.array(datasets.toVector.map{case(name,uri)=>val n=Values.obj.put("name",name).put("uri",uri);val ids=resolved.path("steps").elements.asScala.filter(s=>s.path("operator").asText.startsWith("read_item@")&&s.path("params").path("uri").asText.startsWith(uri.stripSuffix("/")+"/")).map(s=>Json.mapper.getNodeFactory.textNode(s.path("id").asText)).toVector;n.set[JsonNode]("steps",Values.array(ids));n})
+   val bindings=Values.array(datasets.toVector.map{case(name,uri)=>val n=Values.obj.put("name",name).put("uri",uri);val ids=resolved.path("steps").elements.asScala.filter(s=>s.path("operator").asText.startsWith("read_item@")&&s.path("params").path("uri").asText.startsWith(uri.stripSuffix("/")+"/")).map(s=>Json.mapper.getNodeFactory.textNode(s.path("id").asText)).toVector;n.set[JsonNode]("steps",Values.array(ids));n}++backend.sourceBindings(resolved))
    update(identifier){j=>j.set[JsonNode]("dataset_bindings",bindings);j.set[JsonNode]("variables",vars);j.put("resolved_job_yaml",YamlDocument.dump(resolved))}
    val raw=backend.execute(definition.jobYaml,vars,definition.config.path("limits").path("max_result_bytes").asLong(8L*1024*1024),control,
     executionId=>update(identifier){j=>if(!control.cancelled.get())j.put("job_id",executionId).put("state","running").put("started_at",now);j.set[JsonNode]("variables",vars)},

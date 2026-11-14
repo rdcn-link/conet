@@ -23,10 +23,11 @@ final class Products(settings:Settings) {
  def defaults(service:ApplicationService,id:String):JsonNode={
   val run=service.get(id).getOrElse(throw new IllegalArgumentException("分析记录不存在"));require(run.path("state").asText=="succeeded","只有成功完成的分析可以发布")
   require(run.path("job_yaml").isTextual,"该历史记录缺少完整 Job 快照，请重新执行后发布")
-  val d=Definition.parse(xstream.util.YamlDocument.dump(run.path("definition")),run.path("job_yaml").asText)
+  val d=Definition.parse(xstream.util.YamlDocument.dump(run.path("definition")),run.path("job_yaml").asText,service.allowLocalOperators)
   val file=service.artifact(id,"analysis.json").filter(Files.isRegularFile(_)).getOrElse(throw new IllegalArgumentException("分析成果文件不存在"))
   val metadata=ProductMetadata.build(d,run,file.getParent)
   metadata.path("sources").elements.asScala.foreach{s=>val source=s.asInstanceOf[com.fasterxml.jackson.databind.node.ObjectNode];settings.centers.find(_.path("datasets").elements.asScala.exists(ds=>ds.path("case").asText==d.config.path("data").path("scope").asText(d.id)&&ds.path("name").asText==s.path("dataset").asText)).foreach(center=>source.put("provider",center.path("title").asText(center.path("id").asText)))}
+  if(service.allowLocalOperators)metadata.path("execution_nodes").elements.asScala.foreach(n=>n.asInstanceOf[com.fasterxml.jackson.databind.node.ObjectNode].put("name","CONET 本地 XStream"))
   val out=Values.obj.put("retention_days",retention);out.set[JsonNode]("metadata",metadata)
   val rights=Values.copy(metadata.path("publication_defaults"));rights.put("verification","self_declared")
   val app=if(rights.path("application").isObject)Values.copy(rights.path("application"))else Values.obj
@@ -40,7 +41,7 @@ final class Products(settings:Settings) {
   };rights.set[JsonNode]("sources",Values.array(sources));rights.set[JsonNode]("outputs",if(rights.path("outputs").isObject)rights.path("outputs")else Values.obj);out.set[JsonNode]("rights",rights);out
  }
  private def grant(n:JsonNode,key:String):Boolean=n.path(key).asText=="allowed"
- def publish(service:ApplicationService,id:String,request:JsonNode,nodeUri:String):JsonNode=synchronized{
+ def publish(service:ApplicationService,id:String,request:JsonNode,nodeUri:String,automation:Option[JsonNode]=None):JsonNode=synchronized{
   val origin=java.net.URI.create(nodeUri);require(origin.getScheme=="dacp"&&origin.getHost!=null&&origin.getPort>0&&origin.getUserInfo==null&&origin.getQuery==null&&origin.getFragment==null&&Option(origin.getPath).forall(p=>p.isEmpty||p=="/"),"产品发布需要有效的共享 DACP 节点地址")
 
   val preview=defaults(service,id);val metadata=Values.copy(preview.path("metadata"));val rights=request.path("rights")
@@ -74,6 +75,7 @@ final class Products(settings:Settings) {
    cleanRights.set[JsonNode]("application",app);cleanRights.set[JsonNode]("sources",Values.array(sources.map{s=>val clean=Values.copy(s);val fact=preview.path("rights").path("sources").elements.asScala.find(_.path("id").asText==s.path("id").asText).get;Seq("uri","dataset").foreach(k=>clean.set[JsonNode](k,fact.path(k)));clean}))
    cleanRights.set[JsonNode]("outputs",outputPolicies);cleanRights.put("commercial_use",if(grant(app,"commercial")&&sources.forall(grant(_,"commercial")))"allowed"else"not_granted")
    metadata.remove("publication_defaults");metadata.set[JsonNode]("platform",Values.obj.put("name",settings.config.path("name").asText("CONET")).put("role","analysis coordination and result publication"));metadata.set[JsonNode]("rights",cleanRights);metadata.set[JsonNode]("artifacts",Values.array(artifacts));metadata.put("dataset_id",datasetId).put("dataset_uri",datasetUri).put("metadata_uri",datasetUri+"/metadata.json").put("report_uri",datasetUri+"/report.md").put("product_id",resultId).put("published_at",now.toString).put("expires_at",expires.toString)
+   automation.foreach{a=>metadata.set[JsonNode]("automation",ProductMetadata.sanitize(a));metadata.put("title",a.path("title").asText).put("description",a.path("purpose").asText)}
    Support.write(temp.resolve("metadata.json"),metadata);Support.writeText(temp.resolve("report.md"),ProductMetadata.report(metadata))
    val internal=Values.obj.put("created_at",now.toString).put("expires_at",expires.toString).put("revoked",false)
    internal.set[JsonNode]("downloads",Values.array(selected.map(JsonNodeFactory.text)))
