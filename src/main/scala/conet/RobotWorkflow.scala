@@ -142,7 +142,13 @@ final class RobotLocalBackend(settings:Settings,directory:Path,catalog:CatalogGa
    def observe():Unit={val history=host.executionHistory.list(limit=1000);history.find(n=>n.path("kind").asText=="local_job"&& !initial(n.path("record_id").asText)).foreach{raw=>val n=RobotWorkflow.executionSnapshot(raw,history);Support.atomic(directory.resolve("execution-snapshots").resolve(localId+".json"),n);status(n)}}
    val monitor=Executors.newSingleThreadScheduledExecutor();monitor.scheduleWithFixedDelay(new Runnable{def run():Unit=try observe()catch{case scala.util.control.NonFatal(_)=>()}},0,1,TimeUnit.SECONDS)
    try{
-    val id=host.engine.run(WorkflowVariables.resolve(job,variables),frame=>{control.check();val h=StreamProtocol.header(frame);if(h.path("type").asText=="data"){require(output.size.toLong+frame.data.length<=limit,"成果超过应用输出上限");output.write(frame.data)}},cancel,policy)
+    val receiver=new _root_.xstream.execution.ResultSink {
+     def accept(frame:_root_.xstream.execution.OperatorFrame):Unit={control.check();val h=StreamProtocol.header(frame);if(h.path("type").asText=="data"){require(output.size.toLong+frame.data.length<=limit,"成果超过应用输出上限");output.write(frame.data)}}
+     def onDiscard(cause:Throwable):Unit=output.reset()
+     def onComplete():Unit=control.check()
+     def close():Unit=()
+    }
+    val id=host.engine.runToSink(WorkflowVariables.resolve(job,variables),receiver,cancel,policy)
     observe()
    }finally{monitor.shutdownNow();monitor.awaitTermination(2,TimeUnit.SECONDS);try observe()finally control.onCancel(()=>())}
   }}}
