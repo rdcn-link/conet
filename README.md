@@ -82,7 +82,7 @@ The smoke test submits two real Jobs; it requires a running CONET installation w
 
 ## Application development
 
-Open `/appbuilder/` to configure, preview and publish analysis applications after signing in with developer permission. Each published app has an immediately accessible `/apps/<id>/` URL. See the [App Builder guide](docs/appbuilder.md) for configuration, usage statistics and extension contracts.
+Open `/appbuilder/` to configure, preview and publish analysis applications without signing in. Each published app has an immediately accessible `/apps/<id>/` URL. See the [App Builder guide](docs/appbuilder.md) for configuration, usage statistics and extension contracts.
 
 
 [Analysis product publication and sharing](docs/products.md): immutable results, generated provenance, multi-party rights review and read-only sharing.

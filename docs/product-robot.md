@@ -87,3 +87,5 @@ Intervals range from 60 seconds to 30 days; observation limits range from 60 sec
 | POST | `/api/product-robot/<id>/reject` | Required `review_note` |
 
 Mutations require JSON and reject cross-origin requests. Administration is single-user and has no authentication layer: the same-origin check is not a substitute for deployment access restrictions. Existing independent product URLs and withdrawal/expiration rules remain in effect.
+
+Generated operator proposals declare every output port in `outputs`, with one View per port (for example, `outputs: {result: {view: bytes}}`). The host validates these declarations together with the parameter schema before creating local packages; generated Job connections must use those declared ports.

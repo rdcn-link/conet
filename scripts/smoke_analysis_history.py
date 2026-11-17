@@ -4,7 +4,7 @@ from playwright.async_api import async_playwright
 async def main():
  async with async_playwright() as pw:
   b=await pw.chromium.launch(executable_path='/home/cnic/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome',args=['--no-sandbox']);p=await b.new_page();errors=[];p.on('pageerror',lambda e:errors.append(str(e)));published=False
-  history=[{'id':'run-'+str(i),'app_id':'sample','app_title':'测试分析 '+str(i),'created_at':'2026-11-08T08:00:00Z','state':'failed' if i==1 else 'succeeded','url':'/apps/sample/?run='+str(i),'publications':[]} for i in range(23)]
+  history=[{'id':'run-'+str(i),'app_id':'sample','app_title':'测试分析 '+str(i),'created_at':'2026-11-08T08:00:00Z','state':'failed' if i==1 else 'succeeded','url':'/analyses/sample/run-'+str(i),'publications':[]} for i in range(23)]
   publication={'product_id':'x'*32,'published_at':'2026-11-08T08:02:00Z','dataset_uri':'dacp://example.test:19860/result-demo','url':'/products/'+'x'*32+'/'}
   history[2]['publications']=[publication]
   async def analyses(route):

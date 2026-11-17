@@ -95,4 +95,8 @@ parameters:
   additionalProperties: false
 icon:
   path: M12 3L22 20H2ZM12 8V13M12 16V17
-  color: '#dc8056'
+role: transform
+type: sdk
+outputs:
+  result:
+    view: bytes

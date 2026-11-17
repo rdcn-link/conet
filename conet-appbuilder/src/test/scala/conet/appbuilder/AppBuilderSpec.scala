@@ -11,13 +11,16 @@ class AppBuilderSpec extends AnyFunSuite {
  val job="""name: Example
 steps:
 - id: source
-  operator: read_item@1.0
+  operator: item_source@1.0
   params: {uri: $SOURCE, view: bytes}
 - id: process
   operator: example@1.0
   params: {threshold: $THRESHOLD}
   inputs: {source: 'source:result'}
-outputs: {result: 'process:result'}
+- id: receive
+  operator: client_sink@1.0
+  inputs: {result: 'process:result'}
+  params: {}
 """
  val config="""version: 1
 id: example
@@ -37,6 +40,12 @@ result:
   views: [{type: table, path: /rows}]
 limits: {max_queued: 2, max_result_bytes: 1024}
 """
+ test("application jobs require a single explicit client sink") {
+  assert(Definition.parse(config,job).id=="example")
+  intercept[IllegalArgumentException](Definition.parse(config,job+"outputs: {result: process}\n"))
+  intercept[IllegalArgumentException](Definition.parse(config,job.replace("operator: client_sink@1.0","operator: example@1.0")))
+  intercept[IllegalArgumentException](Definition.parse(config,job.replace("inputs: {result: 'process:result'}","inputs: {result: 'receive:result'}")))
+ }
  test("bindings follow actual Job scalar references, including lowercase variables, not comments or prose") {
   val lowerJob=job.replace("$THRESHOLD","$threshold")+"# $COMMENT_ONLY is documentation\n"
   val lowerConfig=config.replace("THRESHOLD:","threshold:")
@@ -80,7 +89,7 @@ limits: {max_queued: 2, max_result_bytes: 1024}
  test("publication rejects cycles, dangling references and unsafe cover URLs"){
   intercept[IllegalArgumentException](Definition.parse(config,job.replace("source:result","missing:result")))
   intercept[IllegalArgumentException](Definition.parse(config,job.replace("inputs: {source: 'source:result'}","inputs: {}")))
-  intercept[IllegalArgumentException](Definition.parse(config,job.replace("operator: read_item@1.0","operator: read_item@1.0\n  inputs: {dependency: 'process:result'}")))
+  intercept[IllegalArgumentException](Definition.parse(config,job.replace("operator: item_source@1.0","operator: item_source@1.0\n  inputs: {dependency: 'process:result'}")))
   intercept[IllegalArgumentException](Definition.parse(config+"presentation: {cover: 'javascript:alert(1)'}\n",job))
  }
  test("result decoders disable XML entities and produce bounded explicit artifacts"){
@@ -144,7 +153,7 @@ limits: {max_queued: 2, max_result_bytes: 1024}
   }finally{release.countDown();a.close();b.close();c.close();scheduler.close()}
  }
  test("retry observations count each invocation while node polling remains idempotent"){
-  val record=Values.obj.put("id","job").put("app_id","example");record.set[JsonNode]("step_operators",json("""{"source":"read_item@1.0","process":"example@1.0"}"""))
+  val record=Values.obj.put("id","job").put("app_id","example");record.set[JsonNode]("step_operators",json("""{"source":"item_source@1.0","process":"example@1.0"}"""))
   val first=json("""{"attempt_id":"one","steps":[{"id":"process","state":"running"}],"nodes":{"n":{"execution_id":"one"}}}""")
   Usage.observe(record,first);Usage.observe(record,first)
   Usage.observe(record,json("""{"attempt_id":"two","steps":[{"id":"process","state":"succeeded"}],"nodes":{"n":{"execution_id":"two"},"unreceived":{"state":"pending"}}}"""))

@@ -80,7 +80,30 @@ def main():
             previous=previous if isinstance(previous,list) else previous.get('submissions',[])
             existing=next((s for s in previous if s.get('manifest',{}).get('name')==local['name'] and s.get('manifest',{}).get('version')==local['version'] and s.get('status')!='rejected'),None)
             if existing:report.append({'name':local['name'],'existing':True,'submission_id':existing.get('id',existing.get('submission_id'))});continue
-            manifest={'api_version':2,'name':local['name'],'version':local['version'],'description':local['description'],'icon':local['icon'],'inputs':local['inputs'],'parameters':local['parameters'],'execution':{'executor':'python','entrypoint':'analysis','config':{}},'runtime':{k:runtime[k] for k in ['image','archive']},'build':{'language':'python'},'source_public':True,'provenance':{'source_archive':{'sha256':digest,'size':source.stat().st_size,'filename':source.name},'license':'Apache-2.0'}}
+            manifest={'api_version':2,'name':local['name'],'version':local['version'],'description':local['description'],'role':local['role'],'type':local['type'],'icon':local['icon'],'inputs':local['inputs'],'outputs':local['outputs'],'parameters':local['parameters'],'execution':{'executor':'python','entrypoint':'analysis','config':{}},'runtime':{k:runtime[k] for k in ['image','archive']},'build':{'language':'python'},'source_public':True,'provenance':{'source_archive':{'sha256':digest,'size':source.stat().st_size,'filename':source.name},'license':'Apache-2.0'}}
+            job=yaml.safe_load((ROOT/'cases'/case/'job.yaml').read_text())
+            example_params={
+                'operation': next(step['params']['operation'] for step in job['steps'] if step['operator']==local['name']+'@'+local['version']),
+                'region': {'type':'Polygon','coordinates':[[[110,36],[110.01,36],[110.01,36.01],[110,36.01],[110,36]]]},
+                'region_bbox':[110,36,110.01,36.01], 'cone':[150,2,.15],
+                'event':{'type':'earthquake','time':'2026-01-01T00:00:00Z','longitude':110,'latitude':36,'magnitude':6.5,'radius_km':20,'rainfall_mm':180},
+            }
+            def example(schema,key):
+                if key in example_params:return example_params[key]
+                if 'default' in schema:return schema['default']
+                if 'enum' in schema:return schema['enum'][0]
+                kind=schema.get('type')
+                if kind in ('number','integer'):return schema.get('minimum',1)
+                if kind=='boolean':return False
+                if kind=='array':return [example(schema.get('items',{}),'') for _ in range(schema.get('minItems',0))]
+                if kind=='object':return {k:example(schema['properties'][k],k) for k in schema.get('required',[])}
+                return 'example'
+            properties=local['parameters'].get('properties',{})
+            params={k:example(v,k) for k,v in properties.items() if k in local['parameters'].get('required',[])}
+            steps=[{'id':'read_'+str(i),'operator':'item_source@1.0','inputs':{},'params':{'uri':'context:/example/'+port+'.bundle','view':'bytes'}} for i,port in enumerate(local['inputs'])]
+            steps.append({'id':'process','operator':local['name']+'@'+local['version'],'inputs':{port:'read_'+str(i) for i,port in enumerate(local['inputs'])},'params':params})
+            steps.append({'id':'receive','operator':'client_sink@1.0','inputs':{'result':'process:result'},'params':{}})
+            manifest['documentation']={'inputs':{port:'Input '+port+' stream for '+local['description']+'. Use the preceding stage output or the corresponding synthetic data bundle.' for port in local['inputs']},'outputs':{'result':local['description']+' output as an Arrow bytes stream.'},'parameters':{k:{'description':v.get('description') or 'Configure '+k.replace('_',' ')+' for the synthetic '+case+' analysis.','help':'Use the declared '+v.get('type','value')+' and bounds; spatial coordinates are WGS84 longitude/latitude.','example':example(v,k)} for k,v in properties.items()},'example_job':yaml.safe_dump({'name':local['description'],'steps':steps},sort_keys=False,allow_unicode=True)}
             result=request('/v1/submissions','POST',manifest,token=True);report.append({'name':local['name'],**result})
             (WORK/'submissions.json').write_text(json.dumps(report,indent=2))
             print(json.dumps(report[-1]),flush=True)

@@ -8,14 +8,17 @@ class PlanNarrativeSpec extends AnyFunSuite {
   val plan=Support.obj.put("yaml","original snapshot");plan.set[com.fasterxml.jackson.databind.JsonNode]("job",YamlDocument.parse("""name: demo
 steps:
 - id: read
-  operator: read_item@1.0
+  operator: item_source@1.0
   inputs: {}
   params: {uri: 'dacp://127.0.0.1:19860/ds-demo/catalog.bundle', view: bytes}
 - id: select
   operator: select@1.0
   inputs: {source: read}
   params: {min_snr: 5}
-outputs: {result: select}
+- id: receive
+  operator: client_sink@1.0
+  inputs: {result: select}
+  params: {}
 """))
   val templates=YamlDocument.parse("""operators:
   select@1.0: '筛选{{/source_summary}}，信噪比至少为 {{/params/min_snr}}'

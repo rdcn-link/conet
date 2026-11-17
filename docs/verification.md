@@ -106,3 +106,7 @@ The Scala suites cover anonymous authoring and storage, removed authentication r
 ## Application packages and file inputs
 
 `sbt test` covers package round trips, unsafe/oversized ZIP entries, file-reference validation, immutable per-run inputs, cross-application reference rejection, size/extension limits, expiration and hidden input Catalog access. The tabular plugin tests CSV quoting, multiline fields, missing values and header conflicts. `python3 scripts/smoke_uploaded_csv.py` imports and loads the CSV package, uploads a browser file, submits a real Union Job and verifies tables, statistics, every download, package export and desktop/mobile layouts. Its sample produces three rows and five columns. The shared hosted plugin must be redeployed when its Catalog implementation changes; the original seven data nodes and Union can remain running.
+
+## Execution verification — 17 November 2026
+
+All eleven scientific case operators were built and approved in the configured local public repository with explicit roles, implementation types, output Views and parameter documentation. Fresh real Union submissions succeeded for `check-dams`, `observatory`, `emergency` and the published `observatory-builder-demo`. A newly uploaded three-row CSV also completed through the shared node and Union. CONET was rebuilt and the web process restarted; the seven scientific nodes and shared node remained running. Repository publication and operator callbacks are prerequisites, rather than exceptions to remote operator policy.

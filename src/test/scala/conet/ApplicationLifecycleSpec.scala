@@ -22,10 +22,13 @@ result: {decoder: json, views: [], artifacts: []}
   val job="""name: Test
 steps:
 - id: read
-  operator: read_item@1.0
+  operator: item_source@1.0
   inputs: {}
   params: {uri: 'context:/test/input', view: bytes}
-outputs: {result: read}
+- id: receive
+  operator: client_sink@1.0
+  inputs: {result: read}
+  params: {}
 """
   var apps=new Applications(settings,Map.empty)
   try {

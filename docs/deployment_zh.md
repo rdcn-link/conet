@@ -15,7 +15,7 @@ dacp-union-server/target/universal/stage/bin/dacp-union-server
 dacp-union-server/target/universal/stage/bin/union-admin
 ```
 
-构建与节点相同修订版本的 DACP Scala 客户端，并将它及 XStream 依赖发布到本地 Maven/Ivy 仓库。CONET 依赖 `io.github.rdcn-link:dacp-client-scala_2.13:0.1.0` 和 `xstream-execution-api_2.13:0.1.0-SNAPSHOT`。Python 用于科学数据准备、科学测试及仓库发布工具。节点执行还需要 XStream 开发安装提供的基础镜像 `xstream/operator-python:1.0`。
+构建与节点相同修订版本的 DACP Scala 客户端，并将它及 XStream 依赖发布到本地 Maven/Ivy 仓库。CONET 依赖 `io.github.rdcn-link:dacp-client-scala_2.13:0.1.0` 和 `xstream-execution-api_2.13:0.1.0-SNAPSHOT`。Python 用于科学数据准备、科学测试及仓库发布工具。节点执行从配置的算子仓库下载已注册并固定内容摘要的运行环境归档。
 
 ```bash
 export DACP_HOME=/path/to/dacp-codex
@@ -103,7 +103,7 @@ bin/conet down
   --token-file /secure/submitter.token
 ```
 
-非本机访问必须使用 HTTPS。管理员权限用于注册两个不可变的科学执行环境，提交者 Token 用于上传十一个仅源码算子。仓库使用已有 Python/Arrow 2.0 构建工具将源码编译为算子包。检测模型是不可变的运行环境资源，不放进源码包。运行环境归档可能包含训练权重，但不得放进 Git。脚本**不会**审批或指定可信度；构建成功后仍须管理员审核。CONET 当前执行管理员安装的本地版本，与仓库审批状态独立。
+非本机访问必须使用 HTTPS。管理员权限用于注册两个不可变的科学执行环境，提交者 Token 用于上传十一个仅源码算子。仓库使用已有 Python/Arrow 2.0 构建工具将源码编译为算子包。检测模型是不可变的运行环境资源，不放进源码包。运行环境归档可能包含训练权重，但不得放进 Git。脚本**不会**审批或指定可信度；构建成功后仍须管理员审核。CONET 节点执行仓库中审核公开的算子。启动网络前，应发布并审核通过全部十一个案例算子。源码清单须声明角色、实现类型、输出 View 及完整参数说明；仓库构建时校验结构推导和预览回调。在 `conet.yaml` 中配置 `operator_repositories`，各成员节点与共享托管节点使用同一仓库列表。源码提交凭据仅保存在发布机器上，不发送到浏览器。
 
 灾情案例生成约 1.004 GB 输入，复用淤地坝的地理处理运行环境，无需训练新模型。浏览器地图配置见[案例地图](maps_zh.md)。
 

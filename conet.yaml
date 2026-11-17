@@ -1,6 +1,8 @@
 name: CONET
 host: 0.0.0.0
 port: 8870
+operator_repositories:
+- http://127.0.0.1:8820
 cases:
 - id: check-dams
   title: 山洪沟道淤地坝识别

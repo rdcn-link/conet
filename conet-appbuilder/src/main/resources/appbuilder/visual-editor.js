@@ -15,7 +15,7 @@ function attach({onError}){
 
  function renderJob(){
   jobHost.replaceChildren();const panel=el('div','designer-launch');panel.append(el('h2','','使用 XStream Job Designer 编辑流程'),el('p','','在完整的 Job Designer 中编辑算子、参数、连接和输出，完成后回传到当前应用。'));
-  const summary=el('div','job-summary');summary.append(el('strong','',job.name||'未命名 Job'),el('span','',`${(job.steps||[]).length} 个步骤 · ${Object.keys(job.outputs||{}).length} 个输出`));panel.append(summary);
+  const summary=el('div','job-summary');summary.append(el('strong','',job.name||'未命名 Job'),el('span','',`${(job.steps||[]).length} 个步骤 · ${Object.keys((job.steps||[]).find(s=>s.operator==='client_sink@1.0')?.inputs||{}).length} 个输出`));panel.append(summary);
   const actions=el('div','designer-actions');actions.append(button('↗ 在 Job Designer 中编辑',()=>openDesigner(),'primary'),button('↓ 下载当前 Job YAML',async()=>{try{await flush();const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([$('job').value],{type:'application/yaml'}));link.download=(application.id||'application')+'-job.yaml';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000)}catch(e){onError(e.message)}}));panel.append(actions,el('small','','回传只更新分析流程。应用的输入表单、变量绑定和成果展示可在上方对应标签页中配置。'));jobHost.append(panel);
  }
  async function openDesigner(){

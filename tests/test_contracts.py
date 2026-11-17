@@ -26,7 +26,8 @@ class StreamContracts(unittest.TestCase):
             for step in job['steps']:
                 for source in step.get('inputs',{}).values():self.assertIn(source.split(':')[0],seen)
                 seen.add(step['id'])
-            for source in job['outputs'].values():self.assertIn(source.split(':')[0],seen)
+            self.assertNotIn('outputs',job)
+            self.assertEqual(job['steps'][-1]['operator'],'client_sink@1.0')
     def test_dataset_case_routing(self):
         config=yaml.safe_load((ROOT/'conet.yaml').read_text());self.assertEqual(len(config['centers']),7)
         for center in config['centers']:

@@ -15,7 +15,7 @@ dacp-union-server/target/universal/stage/bin/dacp-union-server
 dacp-union-server/target/universal/stage/bin/union-admin
 ```
 
-Build the DACP Scala client from the same revision and publish it and its XStream dependencies to the local Maven/Ivy repository. CONET depends on `io.github.rdcn-link:dacp-client-scala_2.13:0.1.0` and `xstream-execution-api_2.13:0.1.0-SNAPSHOT`. Python is needed for scientific preparation, scientific tests and repository publication tooling. Node execution also needs the base `xstream/operator-python:1.0` image supplied by the XStream development installation.
+Build the DACP Scala client from the same revision and publish it and its XStream dependencies to the local Maven/Ivy repository. CONET depends on `io.github.rdcn-link:dacp-client-scala_2.13:0.1.0` and `xstream-execution-api_2.13:0.1.0-SNAPSHOT`. Python is needed for scientific preparation, scientific tests and repository publication tooling. Node execution downloads the registered, pinned runtime archives from the configured operator repositories.
 
 ```bash
 export DACP_HOME=/path/to/dacp-codex
@@ -103,7 +103,7 @@ After verification, run:
   --token-file /secure/submitter.token
 ```
 
-HTTPS is required outside localhost. Administrator access registers two immutable scientific execution runtimes; a submitter Token uploads eleven source-only operators. Existing Python/Arrow 2.0 build tooling compiles source into packages. The detector model is an immutable runtime asset, not a source archive member. Runtime archives may contain trained weights; do not put them into Git. The script does **not** approve submissions or assign trust scores. Successful builds remain pending until an administrator reviews them. CONET currently executes its administrator-installed local versions, independently of repository approval.
+HTTPS is required outside localhost. Administrator access registers two immutable scientific execution runtimes; a submitter Token uploads eleven source-only operators. Existing Python/Arrow 2.0 build tooling compiles source into packages. The detector model is an immutable runtime asset, not a source archive member. Runtime archives may contain trained weights; do not put them into Git. The script does **not** approve submissions or assign trust scores. Successful builds remain pending until an administrator reviews them. CONET nodes execute approved public repository operators. Publish and approve all eleven case operators before starting the network. Source manifests declare role, implementation type, output Views and complete parameter documentation; the repository validates inference and preview callbacks during builds. Configure `operator_repositories` in `conet.yaml`; each member and the shared hosting node receive the same repository list. Credentials for source submission remain on the publishing machine, not in browser configuration.
 
 The emergency generator creates approximately 1.004 GB of inputs and reuses the check-dam geospatial runtime; no additional model training is needed. See [case maps](maps.md) for browser map configuration.
 

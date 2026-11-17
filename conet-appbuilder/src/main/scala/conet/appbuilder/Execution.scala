@@ -27,6 +27,18 @@ trait JobBackend {
  def sourceBindings(job:JsonNode):Vector[JsonNode]=Vector.empty
  def execute(job:String,variables:JsonNode,limit:Long,control:JobControl,started:String=>Unit,status:JsonNode=>Unit):Array[Byte]
 }
+object UnionBackend {
+ def failureReason(status:JsonNode):Option[String]={
+  val f=status.path("failure")
+  Option(f.path("message").asText).filter(_.nonEmpty).map { message=>
+   val phase=f.path("phase").asText match {case "preparation"=>"环境准备";case "commit"=>"结果提交";case _=>"步骤执行"}
+   val details=Vector("step_id"->"步骤","operator"->"算子","node"->"节点","request_id"->"请求 ID","execution_id"->"执行 ID")
+    .flatMap {case(key,label)=>Option(f.path(key).asText).filter(_.nonEmpty).map(value=>label+"："+value)}
+   val explanation=if(f.path("code").asText=="OPERATOR_NOT_FOUND")"配置的算子库中找不到所需算子"else message
+   (Vector(phase+"失败",explanation)++details).mkString("；").take(4000)
+  }
+ }
+}
 final class UnionBackend(connection:()=>JsonNode) extends JobBackend {
  private def tls(c:JsonNode)=TlsConfig(ca=Some(Path.of(c.path("ca").asText)),tokenFile=Some(Path.of(c.path("token_file").asText)))
  def webUrls:JsonNode=connection().path("web_urls")
@@ -48,6 +60,12 @@ final class UnionBackend(connection:()=>JsonNode) extends JobBackend {
     val monitor=Executors.newSingleThreadScheduledExecutor()
     monitor.scheduleWithFixedDelay(new Runnable{def run():Unit=try status(execution.status())catch{case NonFatal(_)=>()}},0,1,TimeUnit.SECONDS)
     try Using.resource(execution.results()){results=>results.foreach{event=>control.check();if(event.kind=="data"){require(bytes.size.toLong+event.data.length<=limit,"成果超过应用输出上限");bytes.write(event.data)}else if(Set("error","failed")(event.kind))throw new IllegalStateException("任务执行失败")}}
+    catch {case NonFatal(error)=>
+     val latest=scala.util.Try(execution.status()).toOption
+     latest.foreach(status)
+     val reason=latest.filter(v=>Set("failed","expired")(v.path("state").asText)).flatMap(v=>UnionBackend.failureReason(v))
+     throw reason.map(message=>new IllegalStateException(message,error)).getOrElse(error)
+    }
     finally {monitor.shutdownNow();monitor.awaitTermination(3,TimeUnit.SECONDS);control.onCancel(()=>())}
     control.check();try status(execution.status())catch{case NonFatal(_)=>()}
    }
@@ -123,7 +141,7 @@ final class ApplicationService(val definition:Definition,val state:Path,manifest
     val values=Values.copy(job.path("replay_variables"));definition.variableBindings.foreach{case(key,b)=>if(b.has("input")){val v=job.at("/"+b.path("input").asText.replace('.', '/'));values.set[JsonNode](key,if(v.isObject&&definition.fileFields.exists(_._1==b.path("input").asText))v.path("uri")else v)}};values
    }else definition.variables(job,m,datasets)
    val resolved=YamlDocument.parse(WorkflowVariables.resolve(definition.jobYaml,vars))
-   val bindings=Values.array(datasets.toVector.map{case(name,uri)=>val n=Values.obj.put("name",name).put("uri",uri);val ids=resolved.path("steps").elements.asScala.filter(s=>s.path("operator").asText.startsWith("read_item@")&&s.path("params").path("uri").asText.startsWith(uri.stripSuffix("/")+"/")).map(s=>Json.mapper.getNodeFactory.textNode(s.path("id").asText)).toVector;n.set[JsonNode]("steps",Values.array(ids));n}++backend.sourceBindings(resolved))
+   val bindings=Values.array(datasets.toVector.map{case(name,uri)=>val n=Values.obj.put("name",name).put("uri",uri);val ids=resolved.path("steps").elements.asScala.filter(s=>s.path("operator").asText.startsWith("item_source@")&&s.path("params").path("uri").asText.startsWith(uri.stripSuffix("/")+"/")).map(s=>Json.mapper.getNodeFactory.textNode(s.path("id").asText)).toVector;n.set[JsonNode]("steps",Values.array(ids));n}++backend.sourceBindings(resolved))
    update(identifier){j=>j.set[JsonNode]("dataset_bindings",bindings);j.set[JsonNode]("variables",vars);j.put("resolved_job_yaml",YamlDocument.dump(resolved))}
    val raw=backend.execute(definition.jobYaml,vars,definition.config.path("limits").path("max_result_bytes").asLong(8L*1024*1024),control,
     executionId=>update(identifier){j=>if(!control.cancelled.get())j.put("job_id",executionId).put("state","running").put("started_at",now);j.set[JsonNode]("variables",vars)},

@@ -110,7 +110,7 @@ variables:
   MODE: {value: analysis}
 ```
 
-Use only the bindings needed by the Job. Input objects and arrays preserve their JSON types. `dataset` looks up a dataset by the context metadata in the Union catalog and appends a validated relative Item path. The client cannot choose credentials, filesystem output paths, or a submission endpoint. Jobs use named repository operators such as `read_item@1.0` and expose one output stream.
+Use only the bindings needed by the Job. Input objects and arrays preserve their JSON types. `dataset` looks up a dataset by the context metadata in the Union catalog and appends a validated relative Item path. The client cannot choose credentials, filesystem output paths, or a submission endpoint. Jobs use named repository operators such as `item_source@1.0` and expose one output stream.
 
 ### Results
 
@@ -131,7 +131,7 @@ The workbench shows persisted counters, also available at `GET /api/appbuilder/s
 | Counter | Counting rule |
 |---|---|
 | Application submissions | One for each accepted submission, including runs that later fail or are cancelled; rejected validation/queue-full requests are excluded. |
-| Dataset uses | Once per dataset URI per application job when a corresponding `read_item` step is observed running or terminal. |
+| Dataset uses | Once per dataset URI per application job when a corresponding `item_source` step is observed running or terminal. |
 | Operator calls | Once per observed step and execution attempt; two steps using the same operator count twice. |
 | Node task receipts | Once per node identity and confirmed execution ID in Union execution records; placement alone is not counted. |
 
@@ -240,17 +240,60 @@ The disk threshold is a headroom check, not a reservation or per-job quota. Othe
 
 ## Generate, preview and publish an application page
 
-After configuring the Job, inputs, variable bindings and results, select **Automatic generation** to render the structured form, result and appearance settings, or **Intelligent generation** to design a page from task semantics and configured variables. Automatic generation uses `presentation.design` (`layout`, `hero`, `surface`, `density`) and the selected theme; it does not reuse an earlier model design. Intelligent generation reads the complete Job and variable usage locations. Intelligent generation can vary the layout, hero, panel appearance, density, accent and introductory text on each request. It uses the server-side `appbuilder.page_generation.codex_config` connection; browsers never receive credentials.
+After configuring the Job, inputs, variable bindings and results, select **Automatic generation** to render the structured form, result and appearance settings, or **Intelligent generation** to design a page from task semantics and configured variables. Automatic generation uses `presentation.design` (`layout`, `hero`, `surface`, `density`) and the selected theme; it does not reuse an earlier model design. Intelligent generation reads the complete Job and variable usage locations. Intelligent generation composes a page from freely nested grids, content panels, text, images and analysis components. It chooses region proportions, ordering, grouping, spacing and a custom palette from the application content; it does not select a predefined page layout. It uses the server-side `appbuilder.page_generation.codex_config` connection; browsers never receive credentials.
 
 Intelligent generation designs from the task, inputs and results independently of Page settings. Initial generation does not send the configured layout, theme, background, cover or previous page to the model. The generated page owns its theme, background and cover, overriding those settings when rendered. Page settings remain saved for automatic generation. Conversational adjustments use the current generated page.
 
 Both modes open a large preview dialog with the actual configured input controls and initial result state. The toolbar offers **Regenerate automatically** and **Regenerate intelligently**. UNDO / REDO restores up to 20 preview versions; new changes clear redo history. Closing and reopening retains the current preview and conversation. Preview cannot submit analyses. Use the conversation beside the preview to request layout, color or wording changes; replies proposing changes show **Update now**. Only clicking it changes the preview and draft. Sending a chat message shows the waiting indicator on the send button without covering or reloading the left preview; current form values remain intact. Receiving a change proposal does not refresh the preview automatically. Answers without changes do not refresh the page. Undo, redo and regeneration invalidate older proposals. Generation never changes the Job, inputs, variable bindings, data scope or result contracts. Editing the configuration invalidates publication of the older preview; generate again before publishing.
 
-Choose **Save and publish** to persist the exact previewed application. Existing revision checks still apply. The validated `presentation.page` specification is included in application packages, so export/import preserves the approved appearance. Supported fields are `layout` (`split`, `stacked`, `wide`), `hero` (`banner`, `compact`, `centered`), `surface` (`soft`, `outlined`, `elevated`), `density` (`comfortable`, `compact`), six-digit hexadecimal `accent`, `heading` (80 characters) and `intro` (400 characters). Generated executable HTML, scripts and styles are not accepted. A model error leaves the draft and published application unchanged; automatic generation remains available without a model connection.
+Choose **Save and publish** to persist the exact previewed application. Existing revision checks still apply. The validated `presentation.page` specification is included in application packages, so export/import preserves the approved appearance. Automatically generated pages use `layout` (`split`, `stacked`, `wide`), `hero` (`banner`, `compact`, `centered`), `surface` (`soft`, `outlined`, `elevated`) and `density` (`comfortable`, `compact`). Intelligently generated pages use `composition`, an independent `palette` and `max_width` (640–1800 pixels). Both include six-digit hexadecimal `accent`, `heading` (80 characters) and `intro` (400 characters). Generated executable HTML, scripts and styles are not accepted. A model error leaves the draft and published application unchanged; automatic generation remains available without a model connection.
 
 Generated pages may independently declare `theme`, `background` and `cover`; images may be null or local resources under `/assets/`. Generated pages may also declare `input_labels` (input path to label, up to 80 characters), `input_hints` (input path to help text, up to 240 characters) and `input_order` (a permutation of all top-level input names). Nested paths use dots. Only declared inputs may be referenced; names, widgets, bounds, variable bindings and result contracts remain unchanged. Preview conversations can propose changes to these presentation fields and layout; click **Update now** to apply them. **View preview** reopens the current page without generating again. After changing structural configuration, regenerate before publishing.
 
 The preview conversation sidebar can be collapsed and expanded; collapsing gives the preview the full width. Package export is available from the application overview, outside the editor.
+
+### Content-led page composition
+
+`composition` is a presentation tree, independent of the automatic-generation templates. `grid`, `stack` and `panel` containers can nest freely. `text` and local `image` nodes provide explanation and visual context. The runtime supplies four `slot` components: `intro`, `inputs`, `progress` and `results`. Each must appear exactly once, in any position. Inputs retain real controls, upload/Item URI selection, variable bindings, submit/cancel behavior and validation; progress retains real status/errors; results retain charts and downloads. No analysis values are fabricated for the preview. Published pages and previews render the same tree. Narrow screens collapse grids to one column.
+
+A scientific workbench can use a wide input surface beside a progress/result column:
+
+```yaml
+presentation:
+  page:
+    heading: 三天文台联合观测分析
+    intro: 选择天区与观测质量，开展多波段交叉匹配与颜色分析。
+    accent: '#6bbdff'
+    max_width: 1480
+    palette:
+      background: '#101c30'
+      surface: '#192a40'
+      text: '#e1efff'
+      muted: '#a5b8ce'
+      border: '#344a62'
+      accent: '#6bbdff'
+    composition:
+      type: grid
+      columns: 12
+      gap: 24
+      children:
+        - {type: slot, name: intro, span: 12}
+        - type: panel
+          span: 7
+          children:
+            - {type: slot, name: inputs, columns: 2}
+        - type: stack
+          span: 5
+          children:
+            - {type: slot, name: progress}
+            - type: panel
+              children:
+                - {type: slot, name: results}
+```
+
+The model can choose a different hierarchy, ordering, proportions and palette for every application. `grid.columns` is 1–12 and a direct child's `span` must fit that grid. `stack` and `panel` arrange children vertically; their children do not set multi-column spans. Containers allow 1–20 children; a page permits at most 80 nodes and seven levels. Shared node fields are `gap`/`padding` (0–64 pixels), `radius` (0–40), six-digit `background`/`color`, and `align` (`start`, `center`, `end`). Panels may include `title` (80 characters) and `description` (400). Text allows `text` (600 characters), `size` (10–60) and `weight` (400–800). Images require a local `/assets/` resource and `alt`; `ratio` is 0.5–4. Input/result slots may select 1–3 `columns`; input slots may set `map_height` (240–640 pixels). Palette keys are `background`, `surface`, `text`, `muted`, `border` and `accent`.
+
+The model returns the compact tree, rather than executable page code. The server rejects unknown components, duplicate or missing functional slots, external resources and invalid bounds. Intelligent generation uses low reasoning effort and a bounded response; conversations retain the current page and produce explicit proposals. The model never receives server credentials.
 
 ## Dataset and application ratings
 
@@ -271,3 +314,15 @@ Choose **Take offline** in the application overview to disable its public page a
 Management APIs: `POST /api/appbuilder/apps/<id>/status` accepts `{status: online|offline, revision: <current revision>}`; `POST /api/appbuilder/apps/<id>/delete` accepts `{revision: <current revision>}`. Both validate request origin and revision. Offline/deleted application pages and new submissions return HTTP 410; existing task records and result endpoints remain available.
 
 Application information no longer exposes a data-context selector. Existing `data.scope` and manifest-backed defaults in application packages remain intact for execution.
+
+### Analysis failures
+
+The execution panel and each failed history entry show the saved failure reason and analysis record ID. A submission failure has no Union Job ID because execution has not started. Application Jobs return one stream through an explicit `client_sink@1.0` step. Use `item_source@1.0` for Item input and connect its selected view to downstream ports. Server logs contain full exception stacks; browser errors remain concise.
+
+Union execution failures are shown in the progress area and saved in analysis history. The message includes the preparation/execution/commit phase, known step and operator, node identity, request ID and execution ID. A missing operator is identified explicitly. Complete exception stacks remain in node/Union logs; a cancelled result stream does not replace the recorded failure cause.
+
+### Analysis records
+
+The published App page contains the input form and the current run's progress and results. Its **Analysis records** link opens `/analyses/?app=<app-id>`. `/analyses/` lists runs with application and execution-state filters; `/analyses/<app-id>/<run-id>` displays a single saved run using the shared CONET layout. Workspace and robot record links use the same detail page.
+
+Record pages show the saved application and inputs, timestamps, failure diagnostics, the Job DAG with substituted variables, processing descriptions, execution nodes, result previews and downloads, input retention/rerun actions, and dataset publication information. Result views use the saved run definition; application themes, backgrounds and generated page layouts are not applied. Offline applications retain readable run records. Refresh is manual on history pages; the App page continues to show live progress for its current submission.

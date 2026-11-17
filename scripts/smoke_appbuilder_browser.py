@@ -25,18 +25,8 @@ async def run(args):
             assert await page.get_by_text('应用工作台',exact=True).count()==0
             assert await page.locator('a[href="/"],a[href="/appbuilder/"]').count()==0
             assert await page.get_by_text('Job YAML',exact=True).count()==0
-            # Empty histories are valid after an administrator clears usage records.
-            jobs = await (await page.request.get(args.url + '/apps/' + case + '/api/jobs')).json()
-            await page.locator('.history-panel>summary').click()
-            assert await page.locator('.history-panel').get_attribute('open') is not None
-            if any(j['state'] == 'succeeded' for j in jobs):
-                complete = page.locator('#history button').filter(has_text='已完成').first
-                await complete.click()
-                await page.wait_for_function("!document.querySelector('#results').hidden")
-                assert await page.locator('#downloads a').count() >= 2
-                assert await page.locator('#views section').count() >= 2
-            else:
-                assert await page.locator('#history button').count() == len(jobs)
+            assert await page.locator('.history-panel').count() == 0
+            assert await page.locator('#analysis-history-link').get_attribute('href') == '/analyses/?app=' + case
         await page.goto(args.url + '/appbuilder/', wait_until='domcontentloaded')
         await page.wait_for_function("document.querySelector('#overview-title').textContent !== '选择应用或新建应用'");await page.locator('#edit-app').click();await page.wait_for_function("document.querySelector('#application').value.length > 0")
         await page.locator('#validate').click()

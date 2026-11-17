@@ -36,7 +36,7 @@ final class Applications(settings:Settings,cases:Map[String,CaseService],inputFi
  def history(publications:JsonNode):JsonNode=synchronized{
   val published=publications.elements.asScala.toVector.groupBy(m=>m.path("application").path("id").asText->m.path("run_id").asText)
   Values.array(services.values.toVector.flatMap{s=>s.list.elements.asScala.map{run=>
-   val n=Values.copy(run);n.put("app_id",s.id).put("app_title",s.definition.config.path("title").asText).put("app_description",s.definition.config.path("description").asText).put("app_url",s"/apps/${s.id}/").put("url",s"/apps/${s.id}/?run="+run.path("id").asText)
+   val n=Values.copy(run);n.put("app_id",s.id).put("app_title",s.definition.config.path("title").asText).put("app_description",s.definition.config.path("description").asText).put("app_url",s"/apps/${s.id}/").put("url",s"/analyses/${s.id}/"+run.path("id").asText)
    n.set[JsonNode]("publications",Values.array(published.getOrElse(s.id->run.path("id").asText,Vector.empty).map{m=>Values.obj.put("product_id",m.path("product_id").asText).put("published_at",m.path("published_at").asText).put("dataset_uri",m.path("dataset_uri").asText).put("url","/products/"+m.path("product_id").asText+"/")}));n
   }}.sortBy(_.path("created_at").asText).reverse)
  }

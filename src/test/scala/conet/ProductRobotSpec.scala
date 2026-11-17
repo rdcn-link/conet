@@ -59,9 +59,9 @@ class ProductRobotSpec extends AnyFunSuite {
   try{
    val p=Support.copy(proposal);val step=p.path("job").path("steps").get(1).asInstanceOf[com.fasterxml.jackson.databind.node.ObjectNode];step.set[JsonNode]("operator",Support.obj.put("local","csv_profile@1.0"))
    val op=Support.obj.put("name","csv_profile").put("version","1.0").put("description","统计字段质量").put("source","def analyze(x): return len(x)\n").put("tests","import unittest\n")
-   op.set[JsonNode]("inputs",node("{\"source\":{\"representations\":[\"bytes\"],\"formats\":[]}}"));op.set[JsonNode]("parameters",node("{\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}"));p.set[JsonNode]("new_operators",Support.arr(Seq(op)))
+   op.set[JsonNode]("outputs",node("{\"result\":{\"view\":\"bytes\"}}"));op.set[JsonNode]("inputs",node("{\"source\":{\"representations\":[\"bytes\"],\"formats\":[]}}"));op.set[JsonNode]("parameters",node("{\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}"));p.set[JsonNode]("new_operators",Support.arr(Seq(op)))
    val saved=workflows.prepare(p,context,"b"*32);val directory=root.resolve(".state/product-robot/workflows").resolve(saved.path("id").asText);val manifest=xstream.util.YamlDocument.parse(Files.readString(directory.resolve("library/csv_profile/1.0/operator.yaml")))
-   xstream.operator.OperatorPresentation.validate(manifest);assert(manifest.path("role").asText=="transform");assert(!manifest.path("source_public").asBoolean)
+   xstream.operator.OperatorPresentation.validate(manifest);xstream.operator.OutputViews.validate(manifest);assert(manifest.path("outputs").path("result").path("view").asText=="bytes");assert(manifest.path("role").asText=="transform");assert(!manifest.path("source_public").asBoolean)
    val bundle=workflows.bundle(saved.path("id").asText);assert(bundle.path("files").size>=6);assert(bundle.path("runtime").path("image").asText=="sha256:"+("a"*64));assert(workflows.get(saved.path("id").asText).get.allowLocalOperators)
    Files.writeString(directory.resolve("library/csv_profile/1.0/src/csv_profile.py"),"changed")
    intercept[IllegalArgumentException]{new RobotLocalBackend(settings,directory,new CatalogGateway(settings)).execute("",Support.obj,1024,new conet.appbuilder.JobControl,_=>(),_=>())}

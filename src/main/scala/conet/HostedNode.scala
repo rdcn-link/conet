@@ -39,7 +39,7 @@ object HostedNode {
   val configFile=h.resolve("node.yaml");val config=if(Files.exists(configFile))xstream.util.YamlDocument.parse(Files.readString(configFile)).deepCopy[com.fasterxml.jackson.databind.node.ObjectNode]()else{
    val n=Support.obj.put("host","0.0.0.0").put("public_host",s.publicHost).put("port",freePort()).put("tls_cert",cert.toString).put("tls_key",key.toString).put("tls_ca",ca.resolve("ca.pem").toString).put("credential_directory",h.resolve("credentials").toString).put("plugin_directory",plugins.toString)
    n.putObject("web").put("host","127.0.0.1").put("port",freePort());n.putObject("s3").put("enabled",false);n.putObject("data_catalog").put("provider","conet-hosted").putObject("source").put("root",storage.root.toString);n.putObject("union").put("state_directory",h.resolve("union").toString);n
-  };config.put("local_operator_library",s.network.resolve("operators").toString).put("operator_cache",h.resolve("operator-cache").toString)
+  };config.set[JsonNode]("remote_operator_library_urls",s.config.path("operator_repositories"));config.put("operator_cache",h.resolve("operator-cache").toString)
   config.putObject("execution_store").put("provider","file").putObject("settings").put("directory",h.resolve("executions").toString)
   config.putObject("access_log").put("directory",h.resolve("access").toString)
   Support.writeText(configFile,xstream.util.YamlDocument.dump(config))

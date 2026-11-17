@@ -12,6 +12,18 @@ class ConetSpec extends AnyFunSuite {
  private def validate(id:String,payload:JsonNode,m:JsonNode)=conet.appbuilder.Definition.load(Path.of("cases").resolve(id)).validate(payload,m)
  private val manifest=json("""{"bbox_wgs84":[100,20,110,40]}""")
  private val polygon="""{"type":"Polygon","coordinates":[[[101,21],[102,21],[102,22],[101,22],[101,21]]]}"""
+ test("all shipped application jobs satisfy the engine contract") {
+  val homes=Seq("cases/check-dams","cases/observatory","cases/emergency","examples/uploaded-csv","examples/uploaded-json")
+  homes.foreach{home=>
+   val definition=conet.appbuilder.Definition.load(Path.of(home))
+   val job=YamlDocument.parse(definition.jobYaml)
+   import scala.jdk.CollectionConverters._
+   job.path("steps").elements.asScala.filter(_.path("operator").asText=="item_source@1.0").foreach{s=>s.path("params").asInstanceOf[com.fasterxml.jackson.databind.node.ObjectNode].put("uri","dacp://node:1234/dataset/input")}
+   val plan=xstream.engine.Jobs.parse(YamlDocument.dump(job))
+   assert(plan.outputs.size==1,home)
+   assert(plan.steps.exists(_.operator=="item_source@1.0"),home)
+  }
+ }
  test("polygon topology rejects crossed rings, holes outside shell and malformed coordinates"){
   assert(conet.appbuilder.InputValidation.polygon(json(polygon)).getArea==1)
   Seq("""{"type":"Polygon","coordinates":[[[101,21],[102,22],[102,21],[101,22],[101,21]]]}""","""{"type":"Polygon","coordinates":[[[101,21],[102,21],[102,22],[101,22],[101,21]],[[103,23],[104,23],[104,24],[103,24],[103,23]]]}""").foreach(p=>intercept[IllegalArgumentException](conet.appbuilder.InputValidation.polygon(json(p))))
@@ -62,7 +74,13 @@ centers:
    def request(path:String,body:Option[String]=None,origin:Option[String]=None)={val b=HttpRequest.newBuilder(URI.create(s"http://127.0.0.1:$p$path"));origin.foreach(b.header("Origin",_));body.foreach(v=>b.header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(v)));Support.http.send(b.build,HttpResponse.BodyHandlers.ofString())}
    assert(request("/api/config").statusCode==200)
    assert(request("/appbuilder/").body.contains("App Builder"))
-   assert(request("/apps/check-dams/").statusCode==200)
+   val appPage=request("/apps/check-dams/")
+   assert(appPage.statusCode==200 && !appPage.body.contains("history-panel"))
+   assert(appPage.body.contains("analysis-history-link"))
+   assert(request("/analyses/check-dams/old").statusCode==200)
+   assert(request("/apps/check-dams/api/jobs/old").statusCode==200)
+   val oldHistory=Json.mapper.readTree(request("/api/analyses").body)
+   assert(oldHistory.get(0).path("url").asText=="/analyses/check-dams/old")
    assert(Json.mapper.readTree(request("/api/appbuilder/apps").body).size==1)
    val document=Json.mapper.readTree(request("/api/appbuilder/apps/check-dams").body)
    val cloned=Support.copy(document);cloned.put("application_yaml",document.path("application_yaml").asText.replace("id: check-dams","id: published-test"));cloned.remove("revision")
@@ -111,7 +129,7 @@ centers:
  test("operator packaging supports configured linked assets and preserves a valid archive on failure"){
   val root=Files.createTempDirectory("conet-package-");val state=root.resolve(".state/cases/sample")
   Support.writeText(root.resolve("conet.yaml"),"cases: [{id: sample, directory: cases/sample}]\ncenters: []\n")
-  Support.writeText(root.resolve("cases/sample/manifests/sample.yaml"),"name: sample\nversion: '1.0'\n")
+  Support.writeText(root.resolve("cases/sample/manifests/sample.yaml"),"name: sample\nversion: '1.0'\nrole: transform\ntype: sdk\nicon: {path: 'M4 4h16v16H4z'}\ninputs: {}\noutputs: {result: {view: bytes}}\nparameters: {type: object, properties: {}, required: [], additionalProperties: false}\n")
   Support.writeText(root.resolve("cases/sample/operator/analysis.py"),"value = 1\n")
   Support.writeText(root.resolve("cases/sample/packaging.yaml"),"assets: {sample: {model.pt: model/model.pt}}\n")
   val external=Files.createTempDirectory("conet-model-");Support.writeText(external.resolve("model.pt"),"weights")

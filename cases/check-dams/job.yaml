@@ -1,7 +1,7 @@
 name: 易发山洪沟道内的淤地坝识别
 steps:
   - id: terrain_data
-    operator: read_item@1.0
+    operator: item_source@1.0
     inputs: {}
     params: {uri: $TERRAIN_URI, view: bytes}
   - id: terrain_metrics
@@ -20,7 +20,7 @@ steps:
       max_entropy: 0.20
       max_downstream_hops: 32
   - id: imagery
-    operator: read_item@1.0
+    operator: item_source@1.0
     inputs: {}
     params: {uri: $IMAGERY_URI, view: bytes}
   - id: candidate_sites
@@ -28,7 +28,7 @@ steps:
     inputs: {source: imagery}
     params: {operation: detect, region: $REGION, region_bbox: $REGION_BBOX, min_confidence: $MIN_CONFIDENCE, duplicate_distance_m: 60}
   - id: channel_grids
-    operator: read_item@1.0
+    operator: item_source@1.0
     inputs: {}
     params: {uri: $CHANNEL_GRIDS_URI, view: bytes}
   - id: spatial_overlap
@@ -39,5 +39,7 @@ steps:
     operator: check_dam_map@1.1
     inputs: {source: spatial_overlap}
     params: {operation: map, region: $REGION, region_bbox: $REGION_BBOX}
-outputs:
-  map: distribution_map
+  - id: receive
+    operator: client_sink@1.0
+    inputs: {map: distribution_map}
+    params: {}

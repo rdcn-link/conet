@@ -13,6 +13,13 @@ class WebWorkspaceSpec extends AnyFunSuite {
   def call(path:String,body:Option[String]=None,space:String="",origin:String="")={val b=HttpRequest.newBuilder(URI.create(s"http://127.0.0.1:$port$path"));if(space.nonEmpty)b.header("X-Conet-Workspace",space);if(origin.nonEmpty)b.header("Origin",origin);body.foreach(v=>b.header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(v)));http.send(b.build(),HttpResponse.BodyHandlers.ofString())}
   try{
    assert(call("/workspace/").statusCode==200)
+   for(path<-Seq("/analyses/","/analyses/example/run-1")){
+    val page=call(path);assert(page.statusCode==200)
+    assert(page.body.contains("analyses.css") && page.body.contains("analyses.js"))
+    assert(!page.body.contains("application.css") && !page.body.contains("presentation.js"))
+   }
+   assert(call("/analyses/example/run-1",Some("{}")).statusCode==404)
+   assert(call("/analyses/example/run-1/extra").statusCode==404)
    for(p<-Seq("/account/","/api/account","/api/admin/users"))assert(call(p).statusCode==404)
    assert(call("/api/account/login",Some("{}")).statusCode==404)
    assert(call("/api/appbuilder/apps").statusCode==200)

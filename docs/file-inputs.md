@@ -8,7 +8,7 @@ flowchart LR
   S -->|Submit analysis| I[Immutable run input]
   I --> C[Shared DACP node]
   C -->|DACP URI variable| U[Union Job]
-  U --> R[read_item]
+  U --> R[item_source]
   R --> O[Results and downloads]
 ```
 
@@ -31,13 +31,16 @@ variables:
 name: Uploaded input
 steps:
   - id: read_input
-    operator: read_item@1.0
+    operator: item_source@1.0
     params: {uri: $INPUT_URI, view: bytes}
     inputs: {}
-outputs: {result: read_input}
+  - id: receive
+    operator: client_sink@1.0
+    inputs: {result: read_input}
+    params: {}
 ```
 
-Use XStream's actual `$INPUT_URI` variable syntax. Binding a file field supplies its Item URI, not its metadata object. `read_item.params.view` must match the field's configured `view`. `records` is suitable for structured streams consumed by downstream operators; `bytes` exposes the original content, including ZIP roots. Selecting a view does not convert an unsupported format into records. Nested file fields in object groups are supported using dotted input bindings.
+Use XStream's actual `$INPUT_URI` variable syntax. Binding a file field supplies its Item URI, not its metadata object. `item_source.params.view` must match the field's configured `view`. `records` is suitable for structured streams consumed by downstream operators; `bytes` exposes the original content, including ZIP roots. Selecting a view does not convert an unsupported format into records. Nested file fields in object groups are supported using dotted input bindings.
 
 The effective upload maximum is the smaller of field `max_bytes` and `hosting.max_upload_bytes` (16 MiB by default, at most 64 MiB). Empty files and invalid extensions are rejected. File contents are validated by the selected format reader during execution, not just by the filename extension. Uploads are single-file requests without resumable transfer. The editor's form preview displays the control without uploading; publish/load the application to use it.
 

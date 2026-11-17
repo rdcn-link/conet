@@ -8,10 +8,8 @@ async def run(args):
   browser=await p.chromium.launch(headless=True,executable_path=args.chromium,args=['--no-sandbox'])
   page=await browser.new_page(viewport={'width':1440,'height':1000});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   pass
-  await page.goto(base+'/apps/'+report['app']+'/')
-  await page.locator('.history-panel summary').click()
-  button=page.locator('#history button[data-id="'+report['run_id']+'"]');await button.click()
-  await page.wait_for_selector('#publish-result');await page.locator('#publish-result').click()
+  await page.goto(base+'/analyses/'+report['app']+'/'+report['run_id'])
+  await page.locator('#publish-run').click()
   await page.wait_for_selector('.publication-party')
   dialog=page.locator('.publication-dialog')
   await dialog.get_by_label('应用作者',exact=True).fill('CONET 示例应用开发者')

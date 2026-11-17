@@ -38,11 +38,12 @@ object RobotWorkflow {
   val names=declared.map(o=>o.path("name").asText+"@"+o.path("version").asText)
   require(names.distinct.size==names.size,"本地算子身份重复")
   declared.foreach{o=>
-   require(o.fieldNames.asScala.toSet==Set("name","version","description","inputs","parameters","source","tests"),"本地算子设计字段不完整或包含不允许的设置")
+   require(o.fieldNames.asScala.toSet==Set("name","version","description","inputs","outputs","parameters","source","tests"),"本地算子设计字段不完整或包含不允许的设置")
    require(o.path("name").asText.matches("[a-z][a-z0-9_]{0,63}")&&o.path("version").asText.matches("[0-9][A-Za-z0-9_.-]{0,20}"),"本地算子身份无效")
    require(o.path("description").asText.trim.nonEmpty,"请描述本地算子的用途")
    Seq("source","tests").foreach(k=>require(o.path(k).isTextual&&o.path(k).asText.trim.nonEmpty&&o.path(k).asText.length<=50000,"本地算子源码或测试无效"))
    xstream.operator.ParameterSchema.validate(o.get("parameters"));xstream.execution.OperatorPorts.read(o.path("inputs"))
+   val ports=Support.copy(o).put("role","transform");xstream.operator.OutputViews.validate(ports)
    require(o.path("inputs").size>0,"生成的本地算子必须消费输入流")
   }
   val published=context.path("operators").elements.asScala.map(o=>o.path("name").asText+"@"+o.path("version").asText).toSet
@@ -78,9 +79,9 @@ final class RobotWorkflows(settings:Settings,catalog:CatalogGateway) extends Aut
   proposal.path("new_operators").elements.asScala.foreach{o=>
    val name=o.path("name").asText;val base=directory.resolve("library").resolve(name).resolve(o.path("version").asText)
    val manifest=Support.obj.put("name",name).put("version",o.path("version").asText).put("description",o.path("description").asText).put("role","transform").put("type","sdk").put("language","python").put("entrypoint",name).put("runtime",runtime.path("runtime").asText("python-arrow@1.0")).put("source_public",false)
-   manifest.set[JsonNode]("icon",Support.obj.put("path","M4 5h16v14H4zM8 9h8M8 12h8M8 15h5").put("color","#168b94"))
+   manifest.set[JsonNode]("icon",Support.obj.put("path","M4 5h16v14H4zM8 9h8M8 12h8M8 15h5"))
    xstream.operator.OperatorPresentation.validate(manifest)
-   Seq("inputs","parameters").foreach(k=>manifest.set[JsonNode](k,o.get(k)))
+   Seq("inputs","outputs","parameters").foreach(k=>manifest.set[JsonNode](k,o.get(k)))
    Support.writeText(base.resolve("operator.yaml"),YamlDocument.dump(manifest));Support.writeText(base.resolve("local.yaml"),s"image: ${runtime.path("image").asText}\nexecutor: python\nbuild: {provider: python}\n")
    Support.writeText(base.resolve("src/"+name+".py"),o.path("source").asText);Support.writeText(base.resolve("tests/test_operator.py"),o.path("tests").asText)
   }

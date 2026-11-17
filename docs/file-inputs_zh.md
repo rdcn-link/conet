@@ -8,7 +8,7 @@ flowchart LR
   S -->|提交分析| I[不可变运行输入]
   I --> C[共享 DACP 节点]
   C -->|DACP URI 变量| U[Union Job]
-  U --> R[read_item]
+  U --> R[item_source]
   R --> O[结果与下载]
 ```
 
@@ -31,13 +31,16 @@ variables:
 name: Uploaded input
 steps:
   - id: read_input
-    operator: read_item@1.0
+    operator: item_source@1.0
     params: {uri: $INPUT_URI, view: bytes}
     inputs: {}
-outputs: {result: read_input}
+  - id: receive
+    operator: client_sink@1.0
+    inputs: {result: read_input}
+    params: {}
 ```
 
-变量采用 XStream 实际支持的 `$INPUT_URI` 语法。绑定文件字段得到 Item URI，而不是整个元数据对象。`read_item.params.view` 必须与文件字段的 `view` 一致。结构化流供下游算子处理时可用 `records`；读取原始内容时采用 `bytes`，包括 ZIP 根项。指定视图不会将不支持的格式转换为 records。支持对象分组内的嵌套文件字段，使用点分输入绑定。
+变量采用 XStream 实际支持的 `$INPUT_URI` 语法。绑定文件字段得到 Item URI，而不是整个元数据对象。`item_source.params.view` 必须与文件字段的 `view` 一致。结构化流供下游算子处理时可用 `records`；读取原始内容时采用 `bytes`，包括 ZIP 根项。指定视图不会将不支持的格式转换为 records。支持对象分组内的嵌套文件字段，使用点分输入绑定。
 
 实际上传上限为字段 `max_bytes` 与 `hosting.max_upload_bytes` 中的较小值，默认 16 MiB，最多 64 MiB。拒绝空文件和不符合扩展名的文件。执行时由选定的格式读取器验证内容，扩展名检查不代表内容有效。当前为单文件请求，不支持断点续传。编辑器中的表单预览只展示控件；加载发布应用后才能上传。
 

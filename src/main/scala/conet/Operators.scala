@@ -14,6 +14,7 @@ object Operators {
    val assets=if(Files.exists(home.resolve("packaging.yaml")))YamlDocument.parse(Files.readString(home.resolve("packaging.yaml"))).path("assets")else Support.obj
    Support.children(home.resolve("manifests")).filter(_.toString.endsWith(".yaml")).foreach{file=>
     val manifest=YamlDocument.parse(Files.readString(file));val name=manifest.path("name").asText;val version=manifest.path("version").asText
+    xstream.operator.OperatorPresentation.validate(manifest);xstream.operator.OperatorImplementation.read(manifest);xstream.operator.OutputViews.validate(manifest);xstream.operator.ParameterSchema.validate(manifest.get("parameters"))
     require(name.matches("[a-z][a-z0-9_]*")&&version.matches("[0-9][a-zA-Z0-9.\\-]*"),"Invalid operator identifier")
     val folder=settings.caseState(id).resolve("operators").resolve(name).resolve(version);Files.createDirectories(folder)
     val archive=Files.createTempFile(folder,"analysis-",".zip")

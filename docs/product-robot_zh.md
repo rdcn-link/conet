@@ -87,3 +87,5 @@ appbuilder:
 | POST | `/api/product-robot/<id>/reject` | 必填 `review_note` |
 
 修改操作要求 JSON 并拒绝跨源请求。管理采用单用户方案，无认证层；同源检查不能替代部署访问限制。独立产品地址、撤回和过期规则仍然生效。
+
+生成的算子提案必须在 `outputs` 中声明每个输出端口，每个端口声明一种 View（例如 `outputs: {result: {view: bytes}}`）。主机在创建本地算子包前同时校验输出声明和参数结构；生成的 Job 连线必须使用已声明的端口。

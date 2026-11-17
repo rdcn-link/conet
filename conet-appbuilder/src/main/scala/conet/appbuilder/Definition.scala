@@ -76,28 +76,29 @@ object Definition {
   ResultDecoders.named(n.path("result").path("decoder").asText)
   val rawJob=YamlDocument.parse(jobYaml)
   val sinks=rawJob.path("steps").elements.asScala.filter(s=>operatorId(s)=="client_sink@1.0").toVector
-  val job=if(allowLocalOperators&&sinks.nonEmpty){
-   require(sinks.size==1&& !rawJob.has("outputs"),"本地应用须使用唯一 client_sink，不能同时定义 outputs")
-   val normalized=Values.copy(rawJob);normalized.set[JsonNode]("outputs",sinks.head.path("inputs"));normalized.set[JsonNode]("steps",Values.array(rawJob.path("steps").elements.asScala.filterNot(s=>operatorId(s)=="client_sink@1.0").toVector));normalized
-  }else rawJob
-  require(job.path("steps").isArray && job.path("steps").size>0 && job.path("outputs").isObject && job.path("outputs").size==1,"应用 Job 必须包含步骤和一个输出")
+  require(sinks.size==1&& !rawJob.has("outputs"),"应用 Job 必须使用唯一 client_sink 返回结果，不能定义顶层 outputs")
+  val sink=sinks.head
+  require(sink.path("inputs").isObject&&sink.path("inputs").size==1&&sink.path("params").isObject&&sink.path("params").isEmpty,"client_sink 必须包含一个结果输入，且 params 为空")
+  val job=Values.copy(rawJob)
+  job.set[JsonNode]("steps",Values.array(rawJob.path("steps").elements.asScala.filterNot(s=>operatorId(s)=="client_sink@1.0").toVector))
+  require(job.path("steps").isArray && job.path("steps").size>0,"应用 Job 必须包含处理步骤")
   require(job.path("steps").elements.asScala.forall(s=>(s.path("operator").isTextual && s.path("operator").asText.contains("@")) || (allowLocalOperators && s.path("operator").isObject && s.path("operator").fieldNames.asScala.toSet==Set("local") && s.path("operator").path("local").asText.matches("[a-z][a-z0-9_]*@[0-9][A-Za-z0-9_.-]*"))),"应用 Job 使用具名仓库算子")
   val steps=job.path("steps").elements.asScala.toVector;val identifiers=steps.map(_.path("id").asText)
   require(identifiers.forall(_.matches("[A-Za-z_][A-Za-z0-9_-]*"))&&identifiers.distinct.size==identifiers.size,"步骤标识无效或重复")
   def producer(value:JsonNode):String={val id=if(value.isTextual)value.asText.takeWhile(_!=':')else value.path("task").asText;require(identifiers.contains(id),"连接引用了不存在的步骤："+id);id}
   val dependencies=steps.map(s=>s.path("id").asText->s.path("inputs").elements.asScala.map(producer).toSet).toMap
-  job.path("outputs").elements.asScala.foreach(producer)
+  sink.path("inputs").elements.asScala.foreach(producer)
   val done=scala.collection.mutable.Set.empty[String];val visiting=scala.collection.mutable.Set.empty[String]
   def visit(id:String):Unit=if(!done(id)){require(!visiting(id),"Job 数据流存在循环");visiting+=id;dependencies(id).foreach(visit);visiting-=id;done+=id}
   identifiers.foreach(visit)
   val reachable=scala.collection.mutable.Set.empty[String]
   def mark(id:String):Unit=if(reachable.add(id))dependencies(id).foreach(mark)
-  job.path("outputs").elements.asScala.map(producer).foreach(mark)
+  sink.path("inputs").elements.asScala.map(producer).foreach(mark)
   require(identifiers.forall(reachable),"存在未连接到应用结果的步骤")
   def referencesIn(n:JsonNode):Set[String]=if(n.isTextual&&n.asText.matches("\\$[A-Za-z_][A-Za-z0-9_]*"))Set(n.asText.substring(1))else if(n.isContainerNode)n.elements.asScala.flatMap(referencesIn).toSet else Set.empty
   definition.fileFields.foreach{case(key,f)=>
    definition.variableBindings.filter{case(_,b)=>b.path("input").asText==key}.keys.foreach{variable=>
-    steps.filter(s=>s.path("operator").asText.startsWith("read_item@")&&s.path("params").path("uri").asText=="$"+variable).foreach(s=>require(s.path("params").path("view").asText==f.path("view").asText,"文件输入 view 与 read_item 不一致："+key))
+    steps.filter(s=>s.path("operator").asText.startsWith("item_source@")&&s.path("params").path("uri").asText=="$"+variable).foreach(s=>require(s.path("params").path("view").asText==f.path("view").asText,"文件输入 view 与 item_source 不一致："+key))
    }
   }
   val references=referencesIn(job)
@@ -106,8 +107,12 @@ object Definition {
   if(!page.isMissingNode){
    require(page.isObject,"页面设计必须为对象")
    val enums=Map("layout"->Set("split","stacked","wide"),"hero"->Set("banner","compact","centered"),"surface"->Set("soft","outlined","elevated"),"density"->Set("comfortable","compact"))
-   require(page.fieldNames.asScala.forall(k=>enums.contains(k)||Set("accent","heading","intro","input_labels","input_hints","input_order","theme","background","cover")(k)),"未知页面设计字段")
-   enums.foreach{case(k,values)=>require(page.path(k).isTextual&&values(page.path(k).asText),"页面设计字段无效："+k)}
+   require(page.fieldNames.asScala.forall(k=>enums.contains(k)||Set("accent","heading","intro","input_labels","input_hints","input_order","theme","background","cover","composition","palette","max_width")(k)),"未知页面设计字段")
+   if(page.has("composition"))PageComposition.validate(page)
+   else {
+    require(!page.has("palette") && !page.has("max_width"),"自由页面色板和宽度需要区域结构")
+    enums.foreach{case(k,values)=>require(page.path(k).isTextual&&values(page.path(k).asText),"页面设计字段无效："+k)}
+   }
    if(page.has("theme"))require(page.path("theme").isTextual&&Set("coast","forest","indigo","amber","rose")(page.path("theme").asText),"未知页面主题")
    Seq("background","cover").foreach{k=>val image=page.path(k);if(!image.isMissingNode && !image.isNull)require(image.isTextual&&image.asText.startsWith("/assets/") && !image.asText.contains("..") && !image.asText.exists(c=>c=='?'||c=='#'||c=='\\'),"页面图片须为本地资源："+k)}
    require(page.path("accent").asText.matches("#[0-9a-fA-F]{6}"),"页面强调色无效")

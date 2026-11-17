@@ -1,7 +1,7 @@
 name: 三天文台多波段星表交叉匹配与颜色分析
 steps:
   - id: g_catalog
-    operator: read_item@1.0
+    operator: item_source@1.0
     inputs: {}
     params: {uri: $G_CATALOG_URI, view: bytes}
   - id: select_g
@@ -9,7 +9,7 @@ steps:
     inputs: {source: g_catalog}
     params: {operation: select, cone: $CONE, min_snr: $MIN_SNR}
   - id: r_catalog
-    operator: read_item@1.0
+    operator: item_source@1.0
     inputs: {}
     params: {uri: $R_CATALOG_URI, view: bytes}
   - id: select_r
@@ -17,7 +17,7 @@ steps:
     inputs: {source: r_catalog}
     params: {operation: select, cone: $CONE, min_snr: $MIN_SNR}
   - id: i_catalog
-    operator: read_item@1.0
+    operator: item_source@1.0
     inputs: {}
     params: {uri: $I_CATALOG_URI, view: bytes}
   - id: select_i
@@ -28,5 +28,7 @@ steps:
     operator: observatory_crossmatch@1.0
     inputs: {g: select_g, r: select_r, i: select_i}
     params: {operation: crossmatch, cone: $CONE, match_radius_arcsec: $MATCH_RADIUS_ARCSEC}
-outputs:
-  result: colors
+  - id: receive
+    operator: client_sink@1.0
+    inputs: {result: colors}
+    params: {}

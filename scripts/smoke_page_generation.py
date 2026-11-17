@@ -44,7 +44,7 @@ async def main():
     chat_started.set();await chat_release.wait()
    validated=await page.request.post('http://127.0.0.1:8870/api/appbuilder/validate',data={'application_yaml':request['application_yaml'],'job_yaml':request['job_yaml']})
    app=(await validated.json())['application'];idx=len(responses)
-   app.setdefault('presentation',{})['page']={'layout':'stacked' if idx==0 else 'wide','hero':'centered','surface':'outlined','density':'compact','accent':'#126abc','heading':'智能页面'+str(idx),'intro':'对话调整后的介绍','theme':'forest','background':None,'cover':None,'input_labels':{'min_snr':'观测质量阈值'},'input_hints':{'min_snr':'提高阈值，仅保留可靠观测'},'input_order':[f['name'] for f in reversed(app['inputs'])]}
+   app.setdefault('presentation',{})['page']={'composition':{'type':'grid','columns':12,'children':[{'type':'slot','name':'intro','span':12},{'type':'panel','span':8 if idx==0 else 4,'children':[{'type':'slot','name':'inputs'}]},{'type':'stack','span':4 if idx==0 else 8,'children':[{'type':'slot','name':'progress'},{'type':'slot','name':'results'}]}]},'max_width':1480,'accent':'#126abc','heading':'智能页面'+str(idx),'intro':'对话调整后的介绍','theme':'forest','background':None,'cover':None,'input_labels':{'min_snr':'观测质量阈值'},'input_hints':{'min_snr':'提高阈值，仅保留可靠观测'},'input_order':[f['name'] for f in reversed(app['inputs'])]}
    converted=await page.request.post('http://127.0.0.1:8870/api/appbuilder/convert',data={'application':app,'job':request['job_yaml']})
    response=await converted.json();responses.append(request)
    await route.fulfill(json={'application_yaml':response['application_yaml'],'message':'已完成页面设计','changed':True})
@@ -53,7 +53,8 @@ async def main():
   await page.wait_for_function("!document.querySelector('#studio-smart').disabled")
   await page.wait_for_function("!document.querySelector('#studio-smart').disabled")
   await frame.locator('#hero-title').filter(has_text='智能页面0').wait_for()
-  assert await frame.locator('body').get_attribute('data-page-layout')=='stacked'
+  assert await frame.locator('body').get_attribute('data-page-layout')=='free'
+  assert await frame.locator('.generated-page [data-slot]').count()==4
   assert await frame.locator('body').get_attribute('data-theme')=='forest'
   assert await frame.locator('body').get_attribute('data-background') is None
   assert await frame.locator('#hero-cover').is_hidden()

@@ -71,4 +71,8 @@ parameters:
   additionalProperties: false
 icon:
   path: M3 19L9 5L14 13L18 7L22 19ZM5 17H20
-  color: '#14866b'
+role: transform
+type: sdk
+outputs:
+  result:
+    view: bytes

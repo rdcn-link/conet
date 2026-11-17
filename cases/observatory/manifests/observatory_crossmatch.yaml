@@ -39,4 +39,8 @@ parameters:
   additionalProperties: false
 icon:
   path: M12 2L14 9L22 12L14 15L12 22L10 15L2 12L10 9Z
-  color: '#6653b1'
+role: transform
+type: sdk
+outputs:
+  result:
+    view: bytes
