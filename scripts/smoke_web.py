@@ -43,7 +43,7 @@ def main():
     snap=request('/api/snapshot');assert snap['available']
     assert len(snap['overview']['members'])>=len(config['centers'])
     assert all(m['state']=='approved' for m in snap['overview']['members']); assert {c['id'] for c in config['centers']}.issubset({m.get('center_id') for m in snap['overview']['members']})
-    participants={m['identity'] for m in snap['overview']['members'] if m['center_id'] in ['a','b','c','e','f','g']}
+    participants={m['identity'] for m in snap['overview']['members'] if m.get('center_id') in ['a','b','c','e','f','g']}
     assert all(snap['topology']['participation'].get(identity,0)>=1 for identity in participants)
     print(json.dumps(summaries,indent=2,ensure_ascii=False))
 if __name__=='__main__':main()

@@ -110,3 +110,13 @@ The Scala suites cover anonymous authoring and storage, removed authentication r
 ## Execution verification — 17 November 2026
 
 All eleven scientific case operators were built and approved in the configured local public repository with explicit roles, implementation types, output Views and parameter documentation. Fresh real Union submissions succeeded for `check-dams`, `observatory`, `emergency` and the published `observatory-builder-demo`. A newly uploaded three-row CSV also completed through the shared node and Union. CONET was rebuilt and the web process restarted; the seven scientific nodes and shared node remained running. Repository publication and operator callbacks are prerequisites, rather than exceptions to remote operator policy.
+
+## Remote deployment verification — 17 November 2026
+
+An independent deployment on `39.106.98.67` passed real check-dam, observatory, emergency and uploaded-CSV analyses. All eight Node members joined the Union with approved status. The dedicated Designer read 14 datasets from its Union target. Desktop checks passed for all thirteen tested routes; narrow-screen checks passed for the service list, catalog, analysis history and CSV application. Live Tianditu tiles rendered successfully. Map SDK storage uses bounded frame-local memory when browser storage is unavailable in an opaque sandbox, preserving parent-page isolation.
+
+```bash
+python3 scripts/smoke_map_storage.py --url http://39.106.98.67:8870 --chromium /path/to/chromium
+```
+
+AI page generation returned a valid preview. This deployment's model connection depends on a private reverse SSH tunnel from the local machine; analysis execution does not depend on that model connection. Existing website services remained active and their Nginx configuration files were unchanged. These checks validate deployment behavior with synthetic demonstration data, not scientific accuracy or benchmark performance.
