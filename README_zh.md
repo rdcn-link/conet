@@ -1,6 +1,6 @@
 # CONET
 
-[English](README.md)
+[English](README.md) · [官方网站](https://conet.conox.cn/)
 
 CONET 通过 DACP Union 连接数据中心，提供中文科学案例界面和实时运行大屏。七个本地 DACP 节点发布十四个数据集：十个科学输入数据集和四个小型参考数据集。三个案例向**同一个 Union** 提交固定的变量化作业，由 Union 选择执行位置，XStream 执行各步骤。
 

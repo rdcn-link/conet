@@ -1,6 +1,6 @@
 # CONET
 
-[中文](README_zh.md)
+[中文](README_zh.md) · [Official website](https://conet.conox.cn/)
 
 CONET connects data centers through a DACP Union and provides Chinese-language scientific case interfaces and a live operations screen. Seven local DACP nodes publish fourteen datasets: ten scientific source datasets and four small reference datasets. All three cases submit fixed, variable-driven Jobs to the **same Union**; the Union selects execution placement and XStream executes the steps.
 
