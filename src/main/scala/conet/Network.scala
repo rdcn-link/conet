@@ -57,8 +57,21 @@ object Network {
   }}
   Support.children(tls).filter(_.toString.endsWith(".key")).foreach(p=>Files.setPosixFilePermissions(p,PosixFilePermissions.fromString("rw-------")))
   val allocated=scala.collection.mutable.Set.empty[Int]
-  def port():Int={var p=freePort();while(!allocated.add(p))p=freePort();p}
-  val ports=(names:+"union").map(_->port()).toMap;val web=(names:+"union").map(_->port()).toMap
+  val endpoints=names:+"union"
+  val previous=endpoints.flatMap { name =>
+   scala.util.Try(YamlDocument.parse(Files.readString(s.network.resolve(name+".yaml")))).toOption.map(name->_)
+  }.toMap
+  def port(preferred:Int):Int={
+   val reusable=preferred>0 && preferred<=65535 && !allocated(preferred) &&
+    scala.util.Try(Using.resource(new ServerSocket()){ socket =>
+      socket.setReuseAddress(true)
+      socket.bind(new InetSocketAddress(java.net.InetAddress.getLoopbackAddress,preferred))
+    }).isSuccess
+   if(reusable){allocated.add(preferred);preferred}
+   else {var p=freePort();while(!allocated.add(p))p=freePort();p}
+  }
+  val ports=endpoints.map(name=>name->port(previous.get(name).fold(0)(_.path("port").asInt))).toMap
+  val web=endpoints.map(name=>name->port(previous.get(name).fold(0)(_.path("web").path("port").asInt))).toMap
   val node=s.dacpHome.resolve("dacp-server/target/universal/stage/bin/dacp-server");val union=s.dacpHome.resolve("dacp-union-server/target/universal/stage/bin/dacp-union-server")
   def local(program:Path,args:String*):JsonNode=Json.mapper.readTree(Support.command(Seq(program.toString)++args,s.root))
   def base(name:String):ObjectNode=objectOf("host"->"127.0.0.1","port"->ports(name),"tls_cert"->tls.resolve(name+".pem").toString,"tls_key"->tls.resolve(name+".key").toString,"tls_ca"->tls.resolve("ca.pem").toString,"credential_directory"->s.network.resolve(name+"-credentials").toString,"web"->objectOf("host"->"0.0.0.0","port"->web(name)),"s3"->objectOf("enabled"->false))
@@ -74,7 +87,23 @@ object Network {
    n.set[JsonNode]("execution_store",objectOf("provider"->"file","settings"->objectOf("directory"->s.network.resolve(name+"-executions").toString)))
    n.set[JsonNode]("union",objectOf("state_directory"->s.network.resolve(name+"-union").toString,"execution_timeout_seconds"->300));n.set[JsonNode]("access_log",objectOf("directory"->s.network.resolve(name+"-access").toString))
    yaml(s.network.resolve(name+".yaml"),n)
-  };yaml(s.network.resolve("union.yaml"),u)
+  }
+  // Keep the shared node's identity in the Union directory while it starts.
+  // Otherwise the first directory read can remove its existing dataset routes.
+  if(s.config.path("hosting").path("enabled").asBoolean){
+   val hosted=HostedNode.status(s).path("url").asText
+   val token=s.state.resolve("hosted-node/union.token")
+   previous.get("union").foreach { prior =>
+    prior.path("members").elements.asScala.find(member=>
+     member.path("url").asText==hosted && member.path("credential_file").asText==token.toString && Files.isRegularFile(token)
+    ).foreach { member =>
+     members.add(member)
+     if(prior.path("trusted_job_sources").path("conet-app").elements.asScala.exists(_.asText==hosted))
+      u.putObject("trusted_job_sources").putArray("conet-app").add(hosted)
+    }
+   }
+  }
+  yaml(s.network.resolve("union.yaml"),u)
   if(!Files.exists(s.network.resolve("app.token"))){val account=local(union.resolveSibling("union-admin"),"create-account",s.network.resolve("union-credentials").toString,"--subject","conet-app","--role","runner");secret(s.network.resolve("app.token"),account.path("token").asText)}
   val processes=Support.obj
   def start(program:Path,name:String,extra:Seq[String]=Seq.empty):Unit={

@@ -108,3 +108,7 @@ HTTPS is required outside localhost. Administrator access registers two immutabl
 The emergency generator creates approximately 1.004 GB of inputs and reuses the check-dam geospatial runtime; no additional model training is needed. See [case maps](maps.md) for browser map configuration.
 
 The operational network has eight Node members: the existing seven scientific data centers and one shared hosting center. The Union coordinates them and is not counted as a Node. The shared center also serves temporary application inputs; see [file inputs](file-inputs.md).
+
+## CONet network restarts
+
+Keep the network state and hosted node state together. On restart, CONet reuses the previous Flight and dashboard ports when they are available and keeps the shared node's configured membership while it starts. This lets the Union keep its published dataset identifiers across ordinary restarts. If a backend port is unavailable, verify the published catalog again and regenerate any proxy configuration using the active ports.
