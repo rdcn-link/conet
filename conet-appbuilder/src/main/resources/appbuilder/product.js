@@ -11,7 +11,9 @@ const rights=m.rights;table($('contributors'),[['role','贡献角色'],['name','
   const isLocal=/^dacp:\/\/(?:127\.0\.0\.1|localhost)(?=[:/]|$)/i.test(source.uri);
   const address=isLocal?'历史运行地址见完整元数据':source.uri;
   const observation=source.observation==='observed'?'已观察到读取':'流程引用，读取观察未提供';
-  $('sources').append(el('p',(source.dataset||'数据来源')+'：'+address+' · '+observation,'product-note'));
+  const note=el('p',(source.dataset||'数据来源')+'：'+address+' · '+observation);
+  note.className='product-note';
+  $('sources').append(note);
 }table($('rights'),[['party','许可来源'],['view','公开结果'],['download','成果下载'],['commercial','商业使用']],[{party:'应用及方法',...rights.application},...rights.sources.map(s=>({party:s.dataset||s.rights_holder,...s}))].map(row=>({...row,view:labels[row.view],download:labels[row.download],commercial:labels[row.commercial]})));m.limitations.forEach(text=>$('limitations').append(el('li',text)));
 const permissions=await A.request(base+'/permissions');if(permissions.manage){$('manage-product').hidden=false;$('revoke-product').onclick=async()=>{try{await A.request(base+'/revoke',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});$('manage-status').textContent='发布已撤回，公开数据集与产品链接已失效，分析历史仍保留。';$('revoke-product').disabled=true}catch(e){$('manage-status').textContent=e.message}}}
 
