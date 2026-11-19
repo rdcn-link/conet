@@ -75,6 +75,15 @@ python3 scripts/smoke_input_retention.py --url http://127.0.0.1:8870
 
 File inputs offer upload and remote DACP Item modes. Remote mode submits `{"uri":"dacp://host:port/dataset/item.csv"}`, binds the same Job variable and creates no local upload copy. The server validates paths, required views and known file sizes; folders are accepted only for an explicitly advertised bytes view requested by the input. URI user information, queries and fragments are rejected. Connections verify server identity using the configured CA and never forward Union credentials to user-supplied origins. The execution target must still be able to access and read the Item.
 
+Deployments using a public reverse proxy can configure the public DACP service origins for the Union and shared node. CONet uses its corresponding internal connection and verifies the TLS certificate when a pasted Item URI matches one of these configured origins.
+
+```yaml
+appbuilder:
+  public_item_origins:
+    union: dacp://union.conet.conox.cn:443
+    shared: dacp://shared.conet.conox.cn:443
+```
+
 ## Reuse analysis inputs
 
 Analysis history in the App and workspace displays input availability, filenames and cleanup time. **Keep inputs long-term** pins the run's uploaded snapshots; they remain non-public and count against the input quota. **Resume automatic cleanup** starts a fresh configured retention period for a completed run. Active runs remain protected until they finish. Published results and uploaded input retention are independent.

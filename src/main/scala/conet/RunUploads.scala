@@ -4,6 +4,7 @@ import conet.appbuilder.{Definition,InputFiles,Values}
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.io.InputStream
+import java.net.URI
 import java.nio.file.{Files,Path,LinkOption,StandardCopyOption}
 import java.time.Instant
 import scala.jdk.CollectionConverters._
@@ -17,6 +18,24 @@ final class RunUploads(settings:Settings) extends InputFiles {
  require(retention>=1&&retention<=365,"上传保留期须为 1–365 天")
  private val quota=settings.config.path("appbuilder").path("uploads").path("quota_bytes").asLong(1024L*1024*1024)
  require(quota>0,"上传总配额必须大于 0")
+ private val publicOrigins=settings.config.path("appbuilder").path("public_item_origins")
+ private def origin(uri:URI):String=new URI("dacp",null,uri.getHost,if(uri.getPort<0)8815 else uri.getPort,null,null,null).toASCIIString
+ private val aliases=publicOrigins.fields.asScala.map { entry =>
+  require(Set("union","shared")(entry.getKey) && entry.getValue.isTextual,"公开 Item 地址仅支持 union 和 shared")
+  val uri=URI.create(entry.getValue.asText)
+  require(uri.getScheme=="dacp" && uri.getHost!=null && uri.getUserInfo==null && uri.getRawPath.isEmpty &&
+   uri.getQuery==null && uri.getFragment==null,"公开 Item 地址必须是 DACP 服务地址")
+  origin(uri)->entry.getKey
+ }.toMap
+ private def executionUri(value:String):String={
+  val uri=URI.create(value)
+  aliases.get(origin(uri)).map { role =>
+   val endpoint=if(role=="union")settings.connection.path("union_url").asText
+    else HostedNode.status(settings).path("url").asText
+   require(endpoint.nonEmpty,"Item 所在的本地节点尚未启动")
+   endpoint.stripSuffix("/")+uri.getRawPath
+  }.getOrElse(value)
+ }
  Files.createDirectories(root);Files.createDirectories(index)
  private def expires=Instant.now.plusSeconds(retention.toLong*86400).toString
  private def safeId(id:String):String={require(id.matches("[a-f0-9]{32}"),"上传标识无效");id}
@@ -41,7 +60,7 @@ final class RunUploads(settings:Settings) extends InputFiles {
  override def replay(d:Definition,previous:JsonNode,payload:JsonNode,run:String):ObjectNode=resolveInputs(d,payload,Some(run),Some(previous))
  private def resolveInputs(d:Definition,payload:JsonNode,run:Option[String],previous:Option[JsonNode]):ObjectNode=synchronized{
   val out=Values.copy(payload);val selected=d.fileFields.flatMap{case(key,f)=>val value=payload.at("/"+key.replace('.', '/'));if(value.isMissingNode)None else if(value.has("uri")){
-   val uri=value.path("uri").asText
+   val uri=executionUri(value.path("uri").asText)
    val u=java.net.URI.create(uri);val parts=u.getPath.stripPrefix("/").split("/",2)
    // Never forward Union credentials to a caller-supplied remote origin.
    val tls=dacp.client.TlsConfig(ca=Some(Path.of(settings.connection.path("ca").asText)))

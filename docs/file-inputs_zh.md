@@ -75,6 +75,15 @@ python3 scripts/smoke_input_retention.py --url http://127.0.0.1:8870
 
 文件输入提供“上传文件”和“远程 DACP Item”两种方式。远程方式提交 `{"uri":"dacp://host:port/dataset/item.csv"}`，绑定同一个 Job 变量，不创建本地上传副本。服务端校验路径、所需 View 和已知文件大小；远程目录仅在明确提供 bytes 且输入需要 bytes 时接受。URI 不接受账号、查询参数或片段。连接使用已配置的 CA 验证服务器身份，不将 Union 凭据转发到用户指定的地址。执行端仍须能够访问并读取该 Item。
 
+通过反向代理公开服务时，可以配置 Union 和共享节点的公开 DACP 服务地址。粘贴的 Item URI 命中配置的地址时，CONet 使用对应的内部连接并验证 TLS 证书。
+
+```yaml
+appbuilder:
+  public_item_origins:
+    union: dacp://union.conet.conox.cn:443
+    shared: dacp://shared.conet.conox.cn:443
+```
+
 ## 复用分析输入
 
 App 和工作空间的分析历史显示输入可用状态、文件名和自动清理时间。**长期保留输入**固定保存当次上传快照，仍不公开，并计入输入存储配额。**恢复自动清理**为已结束的运行重新开始计算配置的保留期；执行中的输入一直保留到运行结束。结果产品发布与上传输入保留相互独立。
