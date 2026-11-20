@@ -226,6 +226,7 @@ final class Web(settings:Settings) extends AutoCloseable {
      val bytes=try response.body.readNBytes(16*1024*1024+1)finally response.body.close();require(bytes.length<=16*1024*1024,"资源超过大小上限")
      if(response.statusCode==200)send(x,200,bytes,response.headers.firstValue("Content-Type").orElse("application/json"))else json(x,response.statusCode,Support.obj.put("error","未找到作业物理计划"))
     }catch{case NonFatal(_)=>json(x,503,Support.obj.put("error","Union 服务暂不可用"))}
+   case p if p.matches("/assets/catalog-thumbnails/[a-z][a-z0-9-]{0,48}[.]png")=>file(x,settings.root.resolve("web").resolve(p.stripPrefix("/")))
    case p if portalFiles.contains(p)=>file(x,settings.root.resolve("web").resolve(portalFiles(p)))
    case _=>json(x,404,Support.obj.put("error","未找到资源"))
   }

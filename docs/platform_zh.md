@@ -58,6 +58,10 @@ sequenceDiagram
 
 CONET 的 SVG 标识位于 `web/assets/conet-mark.svg`：浅青色圆角方形内，四个青绿色节点连成连续网络，表达参与方之间的连接与协同分析。门户、大屏、已发布应用和浏览器图标共用此资源。
 
+数据目录为各数据集和已发布产品显示缩略图。内置科学数据缩略图取自合成案例的代表性样本。文档、表格和通用产品缩略图表示数据类型。没有匹配预设的条目显示通用缩略图。
+
+生成三个内置案例的数据后，运行 `python scripts/generate-catalog-thumbnails.py` 可重新生成 `web/assets/catalog-thumbnails/` 下的 PNG。脚本使用 NumPy、Matplotlib、Rasterio 和 Astropy，默认从 `.state/cases/` 读取案例数据。传入 `--observatory-match /path/to/matches.csv` 可用合成颜色－颜色分析结果生成天文产品缩略图。
+
 ### 各中心数据量
 
 门户卡片和大屏展示各中心所发布数据集的文件逻辑字节数，跨案例汇总。同一中心内重叠的数据集路径只统计一次；归档文件按其存储文件大小计入，不重复累加展开内容。数据缺失或不可读时显示 `—`。该值不是磁盘容量或传输流量，随状态快照刷新。

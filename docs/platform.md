@@ -58,6 +58,10 @@ Each center's optional `location` in `conet.yaml` has `longitude`, `latitude` an
 
 CONET's SVG identity is `web/assets/conet-mark.svg`: four teal nodes joined into a continuous network on a pale teal rounded square express connected participants and collaborative analysis. The portal, screen, published applications and browser icons share this asset.
 
+Catalog entries display a thumbnail for each dataset or published product. Bundled scientific thumbnails visualize representative samples of the synthetic case data. Document, table and general product thumbnails indicate the data type. The catalog uses a generic thumbnail for entries without a matching preset.
+
+Run `python scripts/generate-catalog-thumbnails.py` after generating the three bundled case datasets to regenerate the PNGs in `web/assets/catalog-thumbnails/`. The generator uses NumPy, Matplotlib, Rasterio and Astropy and reads the case data under `.state/cases/` by default. Use `--observatory-match /path/to/matches.csv` to base the astronomy product thumbnail on a synthetic color–color result.
+
 ### Per-center data volume
 
 The portal cards and screen show the logical file size of the datasets published by each configured center, summed across cases. Overlapping dataset paths within a center are counted once. Archive files count by their stored file size, without adding their expanded contents. Missing or unreadable data is displayed as `—`; this is neither disk capacity nor transfer volume. Values refresh with the status snapshot.
